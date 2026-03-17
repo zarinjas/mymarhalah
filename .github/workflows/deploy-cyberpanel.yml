@@ -1,4 +1,4 @@
-name: Deploy to CyberPanel VPS
+name: Deploy MyMarhalah to CyberPanel VPS
 
 on:
   push:
@@ -16,37 +16,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: 🚚 Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup PHP
+      - name: 🐘 Setup PHP (Fix Ziggy Issue)
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
           tools: composer:v2
 
-      - name: Install Composer dependencies
+      - name: 📦 Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Setup Node.js
+      - name: ⚙️ Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Install dependencies
+      - name: 📦 Install NPM dependencies
         run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 
-      - name: Show tool versions
-        run: |
-          node -v
-          npm -v
-
-      - name: Build Vite assets
+      - name: 🏗️ Build Vite assets
         run: npm run build
 
-      - name: Upload build artifact
+      - name: 📤 Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: vite-build
@@ -59,16 +54,16 @@ jobs:
     needs: build_assets
 
     steps:
-      - name: Checkout
+      - name: 🚚 Checkout Code
         uses: actions/checkout@v4
 
-      - name: Download build artifact
+      - name: 📥 Download built assets
         uses: actions/download-artifact@v4
         with:
           name: vite-build
           path: public/build
 
-      - name: Pull latest code + backend deploy
+      - name: 🛠️ Backend Deploy & Cleanup
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -80,17 +75,20 @@ jobs:
             set -e
             cd "${{ secrets.VPS_APP_PATH }}"
 
+            # Sync kod terbaru dari GitHub
             git fetch --all
             git reset --hard origin/main
 
+            # Setup Backend
             composer install --no-dev --optimize-autoloader
             php artisan migrate --force
             php artisan storage:link || true
 
+            # Kosongkan folder build lama untuk terima fail baru
             rm -rf public/build
             mkdir -p public/build
 
-      - name: Upload built assets to VPS
+      - name: 🚀 Upload built assets to VPS (SCP)
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -101,7 +99,7 @@ jobs:
           target: "${{ secrets.VPS_APP_PATH }}/public/build"
           strip_components: 2
 
-      - name: Finalize cache
+      - name: ✨ Finalize & Restart LiteSpeed
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -113,5 +111,9 @@ jobs:
             set -e
             cd "${{ secrets.VPS_APP_PATH }}"
 
+            # Optimasi Laravel
             php artisan optimize:clear
             php artisan optimize
+            
+            # Restart OpenLiteSpeed (CyberPanel)
+            systemctl restart lsws
