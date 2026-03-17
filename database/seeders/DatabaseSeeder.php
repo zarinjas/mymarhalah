@@ -30,5 +30,13 @@ class DatabaseSeeder extends Seeder
 
         // 4. Demo events (one per NGO tier)
         $this->call(EventSeeder::class);
+        $this->call(UsersTableSeeder::class);
+        $this->call(RolesTableSeeder::class);
+        $this->call(PermissionsTableSeeder::class);
+        $this->call(ModelHasRolesTableSeeder::class);
+        $this->call(EventsTableSeeder::class);
+        $this->call(OrganizationsTableSeeder::class);
+        $this->call(InfaqTableSeeder::class);
+        $this->call(UsrahGroupsTableSeeder::class);
     }
 }
