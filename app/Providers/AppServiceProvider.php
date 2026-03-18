@@ -7,6 +7,7 @@ use App\Listeners\LogTransitionAndNotify;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Facades\Gate; // 1. Tambah Import Gate ni
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,14 +21,16 @@ class AppServiceProvider extends ServiceProvider
 
     /**
      * Bootstrap any application services.
-     *
-     * We register the event→listener mapping here rather than relying solely on
-     * Laravel's auto-discovery because it keeps the binding explicit and visible
-     * to developers who open this file first when debugging the transition engine.
      */
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
+
+        // 2. Kunci Master: Bagi Super Admin akses semua route & permission
+        // Benda ni wajib ada untuk elak Error 403
+        Gate::before(function ($user, $ability) {
+            return $user->hasRole('super_admin') ? true : null;
+        });
 
         // ─── Transition Engine Events ─────────────────────────────────────────
         Event::listen(

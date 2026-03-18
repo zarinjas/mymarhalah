@@ -2,41 +2,46 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Schema;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
      * Seed the application's database.
      *
-     * Order matters: Organizations must exist before Users reference them via
-     * the current_organization_id FK, and Spatie roles/permissions before any
-     * user is assigned a role.
+     * Fokus: Guna data 'iseed' dari local SQLite supaya data 100% sama.
+     * Turutan: Penting untuk elak error Foreign Key (FK).
      */
     public function run(): void
     {
-        // 1. NGO tiers (PKPIM, ABIM, WADAH)
-        $this->call(OrganizationSeeder::class);
+        // 1. Matikan sekatan Foreign Key kejap supaya MariaDB tak 'bising'
+        Schema::disableForeignKeyConstraints();
 
-        // 2. Spatie roles and permissions
-        $this->call(RoleAndPermissionSeeder::class);
+        $this->call([
+            // --- ASAS (Roles & Permissions) ---
+            RolesTableSeeder::class,
+            PermissionsTableSeeder::class,
 
-        // 3. Demo superadmin account
-        $this->call(AdminUserSeeder::class);
+            // --- STRUKTUR (Organizations) ---
+            OrganizationsTableSeeder::class,
 
-        // 4. Demo events (one per NGO tier)
-        $this->call(EventSeeder::class);
-        $this->call(UsersTableSeeder::class);
-        $this->call(RolesTableSeeder::class);
-        $this->call(PermissionsTableSeeder::class);
-        $this->call(ModelHasRolesTableSeeder::class);
-        $this->call(EventsTableSeeder::class);
-        $this->call(OrganizationsTableSeeder::class);
-        $this->call(InfaqTableSeeder::class);
-        $this->call(UsrahGroupsTableSeeder::class);
+            // --- PENGGUNA (Users) ---
+            UsersTableSeeder::class,
+
+            // --- HUBUNGAN (Pivot Tables Spatie) ---
+            // Sangat penting untuk elak Error 403!
+            ModelHasRolesTableSeeder::class,
+
+            // --- DATA KONTEN (Events & Infaq) ---
+            EventsTableSeeder::class,
+            InfaqTableSeeder::class,
+            UsrahGroupsTableSeeder::class,
+            
+            // Tambah lagi fail seeder iseed kau kat bawah ni kalau ada...
+        ]);
+
+        // 2. Hidupkan balik sekatan Foreign Key
+        Schema::enableForeignKeyConstraints();
     }
 }
