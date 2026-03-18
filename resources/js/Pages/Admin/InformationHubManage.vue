@@ -1,7 +1,7 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 const props = defineProps({
     isSuperadmin: Boolean,
@@ -34,6 +34,15 @@ const libraryForm = useForm({
     description: '',
     category: 'Umum',
     pdf_file: null,
+});
+
+const showMemberForm = ref(false);
+const memberForm = useForm({
+    name: '',
+    email: '',
+    phone: '',
+    dob: '',
+    password: '',
 });
 
 const editingAnnouncementId = ref(null);
@@ -135,6 +144,43 @@ function removeLibraryItem(id) {
     if (!confirm('Padam dokumen PDF ini?')) return;
     useForm({}).delete(route('admin.hub.library.destroy', id), { preserveScroll: true });
 }
+
+const inferredOrganization = computed(() => {
+    if (!memberForm.dob) return null;
+
+    const dob = new Date(memberForm.dob);
+    if (Number.isNaN(dob.getTime())) return null;
+
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const hasBirthdayPassed =
+        today.getMonth() > dob.getMonth()
+        || (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
+
+    if (!hasBirthdayPassed) {
+        age -= 1;
+    }
+
+    return props.organizations.find((organization) => {
+        const minAge = Number(organization.min_age ?? 0);
+        const maxAge = organization.max_age === null ? null : Number(organization.max_age);
+
+        if (Number.isNaN(minAge)) return false;
+        if (maxAge !== null && Number.isNaN(maxAge)) return false;
+
+        return age >= minAge && (maxAge === null || age <= maxAge);
+    }) ?? null;
+});
+
+function submitMember() {
+    memberForm.post(route('superadmin.members.store'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            memberForm.reset();
+            showMemberForm.value = false;
+        },
+    });
+}
 </script>
 
 <template>
@@ -147,6 +193,63 @@ function removeLibraryItem(id) {
             <div v-if="$page.props.flash?.success" class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
                 {{ $page.props.flash.success }}
             </div>
+
+            <section v-if="isSuperadmin" class="rounded-3xl border border-gray-100 bg-white/90 p-5 shadow-sm">
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-black text-gray-800">Members</h2>
+                        <p class="mt-1 text-sm text-gray-500">Tambah ahli baharu secara manual.</p>
+                    </div>
+                    <button
+                        type="button"
+                        @click="showMemberForm = !showMemberForm"
+                        class="rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
+                    >
+                        {{ showMemberForm ? 'Tutup Borang' : 'Add Member' }}
+                    </button>
+                </div>
+
+                <form v-if="showMemberForm" class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2" @submit.prevent="submitMember">
+                    <div>
+                        <label class="mb-1 block text-xs font-semibold text-gray-500">Nama Penuh</label>
+                        <input v-model="memberForm.name" type="text" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0" required>
+                        <p v-if="memberForm.errors.name" class="mt-1 text-xs text-red-600">{{ memberForm.errors.name }}</p>
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-xs font-semibold text-gray-500">Email</label>
+                        <input v-model="memberForm.email" type="email" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0" required>
+                        <p v-if="memberForm.errors.email" class="mt-1 text-xs text-red-600">{{ memberForm.errors.email }}</p>
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-xs font-semibold text-gray-500">No. Telefon</label>
+                        <input v-model="memberForm.phone" type="text" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0">
+                        <p v-if="memberForm.errors.phone" class="mt-1 text-xs text-red-600">{{ memberForm.errors.phone }}</p>
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-xs font-semibold text-gray-500">Tarikh Lahir</label>
+                        <input v-model="memberForm.dob" type="date" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0" required>
+                        <p v-if="memberForm.errors.dob" class="mt-1 text-xs text-red-600">{{ memberForm.errors.dob }}</p>
+                        <p v-if="inferredOrganization" class="mt-1 text-xs font-semibold text-emerald-600">
+                            Organisasi automatik: {{ inferredOrganization.name }}
+                        </p>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <label class="mb-1 block text-xs font-semibold text-gray-500">Password (Opsyenal)</label>
+                        <input v-model="memberForm.password" type="text" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0" placeholder="Kosongkan untuk guna default: password123">
+                        <p v-if="memberForm.errors.password" class="mt-1 text-xs text-red-600">{{ memberForm.errors.password }}</p>
+                    </div>
+
+                    <div class="md:col-span-2">
+                        <button type="submit" :disabled="memberForm.processing" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
+                            {{ memberForm.processing ? 'Menyimpan...' : 'Simpan Ahli' }}
+                        </button>
+                    </div>
+                </form>
+            </section>
 
             <section class="rounded-3xl border border-gray-100 bg-white/90 p-5 shadow-sm">
                 <div class="mb-4 flex items-center justify-between">

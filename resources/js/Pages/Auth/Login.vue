@@ -144,6 +144,13 @@ const submit = () => {
                         >
                             {{ form.processing ? 'Signing in...' : 'Sign in' }}
                         </PrimaryButton>
+
+                        <p class="text-center text-sm text-slate-300">
+                            New here?
+                            <Link :href="route('register')" class="font-semibold text-cyan-200 hover:text-cyan-100">
+                                Create account
+                            </Link>
+                        </p>
                     </form>
                 </AccernityCard>
             </section>

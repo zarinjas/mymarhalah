@@ -126,6 +126,11 @@ class User extends Authenticatable
             ->wherePivot('is_naqib', true)
             ->withTimestamps();
     }
+
+    public function facilityBookings(): HasMany
+    {
+        return $this->hasMany(FacilityBooking::class);
+    }
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
     /**

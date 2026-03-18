@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Announcement;
 use App\Models\LibraryItem;
 use App\Models\Organization;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\Permission\Models\Role;
 
 class InformationHubAdminController extends Controller
 {
@@ -39,11 +42,13 @@ class InformationHubAdminController extends Controller
             'isSuperadmin' => $isSuperadmin,
             'defaultOrganizationId' => $user->current_organization_id,
             'organizations' => $isSuperadmin
-                ? Organization::query()->orderBy('min_age')->get(['id', 'name', 'slug'])
+                ? Organization::query()->orderBy('min_age')->get(['id', 'name', 'slug', 'min_age', 'max_age'])
                 : collect([[
                     'id' => $user->organization?->id,
                     'name' => $user->organization?->name,
                     'slug' => $user->organization?->slug,
+                    'min_age' => $user->organization?->min_age,
+                    'max_age' => $user->organization?->max_age,
                 ]]),
             'libraryItems' => $libraryItems,
         ]);
@@ -92,11 +97,13 @@ class InformationHubAdminController extends Controller
             'isSuperadmin' => $isSuperadmin,
             'defaultOrganizationId' => $user->current_organization_id,
             'organizations' => $isSuperadmin
-                ? Organization::query()->orderBy('min_age')->get(['id', 'name', 'slug'])
+                ? Organization::query()->orderBy('min_age')->get(['id', 'name', 'slug', 'min_age', 'max_age'])
                 : collect([[
                     'id' => $user->organization?->id,
                     'name' => $user->organization?->name,
                     'slug' => $user->organization?->slug,
+                    'min_age' => $user->organization?->min_age,
+                    'max_age' => $user->organization?->max_age,
                 ]]),
             'announcements' => $announcements,
             'libraryItems' => $libraryItems,
@@ -199,6 +206,38 @@ class InformationHubAdminController extends Controller
         ]);
 
         return back()->with('success', 'Dokumen PDF berjaya dimuat naik.');
+    }
+
+    public function storeMember(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()?->hasRole('Superadmin'), 403);
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'phone' => ['nullable', 'string', 'max:20'],
+            'dob' => ['required', 'date'],
+            'password' => ['nullable', 'string', 'min:6'],
+        ]);
+
+        $dob = $request->date('dob');
+        $organization = $dob ? Organization::forAge($dob->age) : null;
+        $organization ??= Organization::query()->orderBy('min_age')->first();
+
+        $user = User::withoutGlobalScopes()->create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'phone' => $data['phone'] ?? null,
+            'dob' => $dob,
+            'current_organization_id' => $organization?->id,
+            'password' => Hash::make($data['password'] ?: 'password123'),
+        ]);
+
+        if (Role::query()->where('name', 'Member')->where('guard_name', 'web')->exists()) {
+            $user->assignRole('Member');
+        }
+
+        return back()->with('success', 'Ahli baharu berjaya ditambah.');
     }
 
     public function destroyLibraryItem(Request $request, LibraryItem $libraryItem): RedirectResponse

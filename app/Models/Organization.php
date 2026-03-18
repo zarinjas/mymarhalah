@@ -78,6 +78,11 @@ class Organization extends Model
         return $this->hasMany(BroadcastMessage::class);
     }
 
+    public function facilities(): HasMany
+    {
+        return $this->hasMany(Facility::class);
+    }
+
     // ─── Helpers ────────────────────────────────────────────────────────────────
 
     /**

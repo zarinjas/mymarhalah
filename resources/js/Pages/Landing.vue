@@ -1,5 +1,5 @@
 <script setup>
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import AuroraBackground from '@/Components/ui/AuroraBackground.vue';
 
 const form = useForm({
@@ -126,6 +126,13 @@ const submit = () => {
                         >
                             {{ form.processing ? 'Memproses...' : 'Log Masuk' }}
                         </button>
+
+                        <p class="text-center text-sm text-slate-500">
+                            Pengguna baru?
+                            <Link :href="route('register')" class="font-semibold text-cyan-700 hover:text-cyan-600">
+                                Daftar akaun
+                            </Link>
+                        </p>
                     </form>
                 </section>
             </div>

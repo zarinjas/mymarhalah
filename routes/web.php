@@ -3,6 +3,7 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DirectoryController;
 use App\Http\Controllers\EventController;
+use App\Http\Controllers\FacilityBookingController;
 use App\Http\Controllers\BroadcastController;
 use App\Http\Controllers\DashboardBannerController;
 use App\Http\Controllers\ExportController;
@@ -46,6 +47,12 @@ Route::middleware(['auth', 'verified', 'profile_complete'])->group(function () {
         Route::post('/admin/usrah/groups/{usrahGroup}/assign', [UsrahController::class, 'assignMembers'])->name('admin.usrah.groups.assign');
         Route::get('/admin/broadcasts', [BroadcastController::class, 'index'])->name('admin.broadcasts.index');
         Route::post('/admin/broadcasts', [BroadcastController::class, 'store'])->name('admin.broadcasts.store');
+        Route::get('/admin/facilities/manage', [FacilityBookingController::class, 'manageFacilities'])->name('admin.facilities.manage');
+        Route::post('/admin/facilities', [FacilityBookingController::class, 'storeFacility'])->name('admin.facilities.store');
+        Route::put('/admin/facilities/{facility}', [FacilityBookingController::class, 'updateFacility'])->name('admin.facilities.update');
+        Route::delete('/admin/facilities/{facility}', [FacilityBookingController::class, 'destroyFacility'])->name('admin.facilities.destroy');
+        Route::get('/admin/facility-bookings', [FacilityBookingController::class, 'adminIndex'])->name('admin.facility-bookings.index');
+        Route::patch('/admin/facility-bookings/{facilityBooking}', [FacilityBookingController::class, 'updateStatus'])->name('admin.facility-bookings.update');
     });
 
     // Superadmin-only: fee management + all transactions
@@ -72,6 +79,7 @@ Route::middleware(['auth', 'verified', 'profile_complete'])->group(function () {
 
         Route::get('/superadmin/settings', [SuperadminSystemSettingController::class, 'index'])->name('superadmin.settings.index');
         Route::post('/superadmin/settings/system-logo', [SuperadminSystemSettingController::class, 'updateSystemLogo'])->name('superadmin.settings.system-logo.update');
+        Route::post('/superadmin/members', [InformationHubAdminController::class, 'storeMember'])->name('superadmin.members.store');
 
         Route::redirect('/superadmin/logo-settings', '/superadmin/organizations');
     });
@@ -88,6 +96,9 @@ Route::middleware(['auth', 'verified', 'profile_complete'])->group(function () {
         Route::post('/member/usrah/{usrahGroup}/attendance', [UsrahController::class, 'logAttendance'])->name('member.usrah.attendance.log');
         Route::post('/member/pay-fee', [PaymentController::class, 'payFee'])->name('member.pay.fee');
         Route::post('/member/infaq/{infaq}/donate', [InfaqController::class, 'donate'])->name('member.infaq.donate');
+        Route::get('/member/facilities', [FacilityBookingController::class, 'index'])->name('member.facilities.index');
+        Route::get('/member/facilities/{facility}', [FacilityBookingController::class, 'show'])->name('member.facilities.show');
+        Route::post('/member/facilities/{facility}/book', [FacilityBookingController::class, 'store'])->name('member.facilities.book');
     });
 
     Route::get('/directory', [DirectoryController::class, 'index'])->name('directory.index');
