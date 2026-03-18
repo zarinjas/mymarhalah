@@ -171,6 +171,23 @@ function scrollBooks(direction) {
                                     </div>
                                 </div>
                             </div>
+
+                            <div class="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                                <div class="flex items-center justify-between gap-3">
+                                    <div class="flex items-center gap-3">
+                                        <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M5 7v13h14V7M9 7V4h6v3M9 13h6"/></svg>
+                                        </span>
+                                        <div>
+                                            <p class="text-xs text-gray-500">Tempahan Ruang</p>
+                                            <p class="text-sm font-semibold text-gray-800">Semak ruang & buat tempahan</p>
+                                        </div>
+                                    </div>
+                                    <Link :href="route('member.facilities.index')" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100">
+                                        Tempah
+                                    </Link>
+                                </div>
+                            </div>
                         </div>
                     </section>
 

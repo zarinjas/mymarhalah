@@ -197,6 +197,13 @@ const navItems = computed(() => [
                 icon: `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                                  <path stroke-linecap="round" stroke-linejoin="round" d="M11 5h2m-6 4h10M6 13h12M8 17h8"/>
                              </svg>`,
+                        }, {
+                            label:  'Tempahan Ruang',
+                            href:   route('member.facilities.index'),
+                            active: route().current('member.facilities.*'),
+                            icon: `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                     <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M5 7v13h14V7M9 7V4h6v3M9 13h6"/>
+                                     </svg>`,
         }, {
                 label:  'Pustaka',
                 href:   route('member.library'),
