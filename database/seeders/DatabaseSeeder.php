@@ -9,13 +9,11 @@ class DatabaseSeeder extends Seeder
 {
     /**
      * Seed the application's database.
-     *
-     * Fokus: Guna data 'iseed' dari local SQLite supaya data 100% sama.
-     * Turutan: Penting untuk elak error Foreign Key (FK).
+     * Turutan ni PENTING untuk elak Error Foreign Key (FK).
      */
     public function run(): void
     {
-        // 1. Matikan sekatan Foreign Key kejap supaya MariaDB tak 'bising'
+        // 1. Matikan sekatan Foreign Key supaya MariaDB tak 'bising'
         Schema::disableForeignKeyConstraints();
 
         $this->call([
@@ -30,15 +28,20 @@ class DatabaseSeeder extends Seeder
             UsersTableSeeder::class,
 
             // --- HUBUNGAN (Pivot Tables Spatie) ---
-            // Sangat penting untuk elak Error 403!
+            // Wajib masuk untuk elak 403 Forbidden
             ModelHasRolesTableSeeder::class,
 
-            // --- DATA KONTEN (Events & Infaq) ---
+            // --- DATA KONTEN (Events, Infaq, Pustaka, Banners) ---
             EventsTableSeeder::class,
             InfaqTableSeeder::class,
             UsrahGroupsTableSeeder::class,
             
-            // Tambah lagi fail seeder iseed kau kat bawah ni kalau ada...
+            // Masukkan yang baru kat sini biar dia jalan sekali 'go'
+            LibraryItemsTableSeeder::class,
+            CampaignsTableSeeder::class,
+            DashboardBannersTableSeeder::class,
+            
+            // Tambah lagi fail seeder iseed abang kat bawah ni kalau ada...
         ]);
 
         // 2. Hidupkan balik sekatan Foreign Key
