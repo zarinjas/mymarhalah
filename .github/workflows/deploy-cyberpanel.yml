@@ -84,6 +84,14 @@ jobs:
             php artisan migrate --force
             php artisan storage:link || true
 
+            # Fix Permissions secara automatik
+            chmod -R 775 database storage
+            chmod 666 database/database.sqlite
+            # Gunakan chown jika perlu, tapi chmod 775/666 sudah memadai untuk CyberPanel
+            find database storage -type d -exec chmod 775 {} +
+            find database storage -type f -exec chmod 664 {} +
+            chmod 666 database/database.sqlite
+
             # Kosongkan folder build lama untuk terima fail baru
             rm -rf public/build
             mkdir -p public/build
