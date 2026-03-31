@@ -41,11 +41,14 @@ jobs:
       - name: 🏗️ Build Vite assets
         run: npm run build
 
+      - name: 📦 Zip build folder
+        run: tar -czf vite-build.tar.gz -C public/build .
+
       - name: 📤 Upload build artifact
         uses: actions/upload-artifact@v4
         with:
           name: vite-build
-          path: public/build
+          path: vite-build.tar.gz
           if-no-files-found: error
 
   deploy:
@@ -61,7 +64,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: vite-build
-          path: public/build
+          path: .
 
       - name: 🛠️ Backend Deploy & Cleanup
         uses: appleboy/ssh-action@v1.2.0
@@ -86,29 +89,25 @@ jobs:
 
             # Fix Permissions secara automatik
             chmod -R 775 database storage
-            chmod 666 database/database.sqlite
-            # Gunakan chown jika perlu, tapi chmod 775/666 sudah memadai untuk CyberPanel
             find database storage -type d -exec chmod 775 {} +
             find database storage -type f -exec chmod 664 {} +
             chmod 666 database/database.sqlite
 
-            # Kosongkan folder build lama dengan lebih selamat
-            # Kita tidak padam seluruh folder supaya tidak mengganggu proses symlink
-            rm -rf public/build/*
-            mkdir -p public/build/
+            # Kosongkan folder build lama & sedia folder baru
+            rm -rf public/build
+            mkdir -p public/build
 
-      - name: 🚀 Upload built assets to VPS (SCP)
+      - name: 🚀 Upload build archive to VPS (SCP)
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
-          source: "public/build/**/*"
+          source: "vite-build.tar.gz"
           target: "${{ secrets.VPS_APP_PATH }}/public/build"
-          strip_components: 2
 
-      - name: ✨ Finalize & Restart LiteSpeed
+      - name: ✨ Unzip Assets & Finalize
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -118,11 +117,27 @@ jobs:
           script_stop: true
           script: |
             set -e
+            cd "${{ secrets.VPS_APP_PATH }}/public/build"
+
+            # Unzip fail assets
+            tar -xzf vite-build.tar.gz
+            rm -f vite-build.tar.gz
+
             cd "${{ secrets.VPS_APP_PATH }}"
+
+            # Pastikan manifest.json wujud
+            if [ ! -f "public/build/manifest.json" ]; then
+              echo "ERROR: manifest.json tidak dijumpai!"
+              ls -la public/build/
+              exit 1
+            fi
 
             # Optimasi Laravel
             php artisan optimize:clear
             php artisan optimize
-            
+
+            # Fix final permissions
+            chmod -R 775 public/build
+
             # Restart OpenLiteSpeed (CyberPanel)
             systemctl restart lsws
