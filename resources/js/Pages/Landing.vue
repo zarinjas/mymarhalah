@@ -98,26 +98,32 @@ const submit = () => {
     });
 };
 
-const quickLoginRole = ref('');
-const quickLogin = () => {
-    if (!quickLoginRole.value) return;
+const quickLogin = async () => {
+    if (!quickLoginRole.value || form.processing) return;
     
-    form.reset();
+    // Jangan guna form.reset() kerana ia akan kosongkan semua termasuk login_type
     form.clearErrors();
     form.password = 'password';
+    form.remember = true;
 
     if (quickLoginRole.value === 'superadmin') {
+        state.value = 'admin_flow';
         form.login_type = 'admin';
         form.email = 'superadmin@mywap.my';
     } else if (quickLoginRole.value === 'admin_pkpim') {
+        state.value = 'admin_flow';
         form.login_type = 'admin';
         form.email = 'admin@mywap.my';
     } else if (quickLoginRole.value === 'member') {
+        state.value = 'ahli_flow';
         form.login_type = 'member';
         form.ic_number = '980512101234';
     }
     
-    submit();
+    // Beri sedikit masa untuk UI update state sebelum submit
+    setTimeout(() => {
+        submit();
+    }, 100);
 };
 </script>
 
