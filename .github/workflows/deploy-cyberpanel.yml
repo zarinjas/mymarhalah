@@ -94,8 +94,9 @@ jobs:
             chmod 666 database/database.sqlite
 
             # Kosongkan folder build lama & sedia folder baru
-            rm -rf public/build
-            mkdir -p public/build
+            # Guna folder sementara supaya website tak crash semasa deploy
+            rm -rf public/build_new
+            mkdir -p public/build_new
 
       - name: 🚀 Upload build archive to VPS (SCP)
         uses: appleboy/scp-action@v0.1.7
@@ -105,7 +106,7 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           source: "vite-build.tar.gz"
-          target: "${{ secrets.VPS_APP_PATH }}/public/build"
+          target: "${{ secrets.VPS_APP_PATH }}/public/build_new"
 
       - name: ✨ Unzip Assets & Finalize
         uses: appleboy/ssh-action@v1.2.0
@@ -117,20 +118,24 @@ jobs:
           script_stop: true
           script: |
             set -e
-            cd "${{ secrets.VPS_APP_PATH }}/public/build"
+            cd "${{ secrets.VPS_APP_PATH }}/public/build_new"
 
-            # Unzip fail assets
+            # Unzip fail assets ke folder sementara
             tar -xzf vite-build.tar.gz
             rm -f vite-build.tar.gz
 
             cd "${{ secrets.VPS_APP_PATH }}"
 
-            # Pastikan manifest.json wujud
-            if [ ! -f "public/build/manifest.json" ]; then
+            # Pastikan manifest.json wujud sebelum swap
+            if [ ! -f "public/build_new/manifest.json" ]; then
               echo "ERROR: manifest.json tidak dijumpai!"
-              ls -la public/build/
+              ls -la public/build_new/
               exit 1
             fi
+
+            # Atomic swap: Buang lama, gantikan dengan baru
+            rm -rf public/build
+            mv public/build_new public/build
 
             # Optimasi Laravel
             php artisan optimize:clear
