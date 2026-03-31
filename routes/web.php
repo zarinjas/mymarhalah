@@ -27,10 +27,12 @@ Route::middleware(['auth', 'verified', 'profile_complete'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'dashboardRedirect'])->name('dashboard');
 
     Route::middleware('role:Superadmin|Admin')->group(function () {
+            Route::get('/admin/attendance', [EventController::class, 'adminAttendance'])->name('admin.attendance');
         Route::get('/admin/dashboard', [DashboardController::class, 'admin'])->name('admin.dashboard');
         Route::get('/admin/campaigns', [FinancialController::class, 'adminCampaigns'])->name('admin.campaigns.index');
         Route::post('/admin/campaigns', [FinancialController::class, 'storeCampaign'])->name('admin.campaigns.store');
         Route::get('/admin/information-hub/manage', [InformationHubAdminController::class, 'index'])->name('admin.hub.manage');
+        Route::patch('/admin/information-hub/members/{user}/role', [InformationHubAdminController::class, 'updateRole'])->name('admin.hub.members.role.update');
         Route::post('/admin/information-hub/announcements', [InformationHubAdminController::class, 'storeAnnouncement'])->name('admin.hub.announcements.store');
         Route::put('/admin/information-hub/announcements/{announcement}', [InformationHubAdminController::class, 'updateAnnouncement'])->name('admin.hub.announcements.update');
         Route::patch('/admin/information-hub/announcements/{announcement}/pin', [InformationHubAdminController::class, 'togglePinned'])->name('admin.hub.announcements.pin');
@@ -102,7 +104,29 @@ Route::middleware(['auth', 'verified', 'profile_complete'])->group(function () {
     });
 
     Route::get('/directory', [DirectoryController::class, 'index'])->name('directory.index');
+
+    // ─── E-Commerce Routes (Inertia, inside dashboard) ───────────────────────
+    // Member access: browse products + create/view own orders
+    Route::get('products', [App\Http\Controllers\ProductController::class, 'index'])->name('products.index');
+    Route::get('products/{product}', [App\Http\Controllers\ProductController::class, 'show'])->name('products.show');
+
+    Route::resource('orders', App\Http\Controllers\OrderController::class)->only(['index', 'show', 'store']);
+
+    // Admin/Superadmin: manage catalog + manage orders
+    Route::middleware('role:Admin|Superadmin')->group(function () {
+        Route::resource('products', App\Http\Controllers\ProductController::class)->except(['index', 'show']);
+        Route::resource('categories', App\Http\Controllers\CategoryController::class);
+        Route::post('orders/{order}/update-status', [App\Http\Controllers\OrderController::class, 'updateStatus'])->name('orders.updateStatus');
+
+        // Cawangan (Branch) management — Admin manages own org, Superadmin manages all
+        Route::get('branches', [App\Http\Controllers\BranchController::class, 'index'])->name('branches.index');
+        Route::post('branches', [App\Http\Controllers\BranchController::class, 'store'])->name('branches.store');
+        Route::put('branches/{branch}', [App\Http\Controllers\BranchController::class, 'update'])->name('branches.update');
+        Route::post('branches/{branch}/logo', [App\Http\Controllers\BranchController::class, 'updateLogo'])->name('branches.logo.update');
+        Route::delete('branches/{branch}', [App\Http\Controllers\BranchController::class, 'destroy'])->name('branches.destroy');
+    });
 });
+
 
 // ─── Authenticated Member Routes ─────────────────────────────────────────────
 

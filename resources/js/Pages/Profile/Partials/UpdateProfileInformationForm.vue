@@ -12,7 +12,12 @@ defineProps({
     status: {
         type: String,
     },
+    branches: {
+        type: Array,
+        default: () => [],
+    },
 });
+
 
 const user = usePage().props.auth.user;
 
@@ -24,7 +29,7 @@ const form = useForm({
     education_level: user.education_level ?? '',
     current_profession: user.current_profession ?? '',
     industry: user.industry ?? '',
-    branch_name: user.branch_name ?? '',
+    branch_id: user.branch_id ?? '',
     locality: user.locality ?? '',
     expertise: user.expertise ?? '',
     linkedin_url: user.linkedin_url ?? '',
@@ -151,9 +156,19 @@ function submitProfile() {
                 <p class="text-xs font-bold uppercase tracking-[0.12em] text-gray-500">Komuniti</p>
                 <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
-                        <InputLabel for="branch_name" value="Cawangan" />
-                        <TextInput id="branch_name" type="text" class="mt-1 block w-full" v-model="form.branch_name" placeholder="Contoh: ABIM Selangor" />
-                        <InputError class="mt-2" :message="form.errors.branch_name" />
+                        <InputLabel for="branch_id" value="Cawangan" />
+                        <select
+                            id="branch_id"
+                            v-model="form.branch_id"
+                            class="mt-1 block w-full rounded-xl border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm"
+                        >
+                            <option value="">-- Pilih Cawangan --</option>
+                            <option v-for="branch in branches" :key="branch.id" :value="branch.id">
+                                {{ branch.name }}
+                            </option>
+                        </select>
+                        <p v-if="!branches.length" class="mt-1 text-xs text-gray-400">Tiada cawangan tersedia untuk organisasi anda.</p>
+                        <InputError class="mt-2" :message="form.errors.branch_id" />
                     </div>
 
                     <div>

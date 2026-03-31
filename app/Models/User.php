@@ -40,10 +40,12 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'ic_number',
         'password',
         'dob',
         'phone',
         'current_organization_id',
+        'branch_id',
         'profile_completed_at',
         'education_level',
         'current_profession',
@@ -96,6 +98,11 @@ class User extends Authenticatable
     {
         return $this->belongsTo(Organization::class, 'current_organization_id');
     }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
+    }
     /**
      * Full chronological history of all NGO tier transitions.
      * Ordered ascending so the Profile Timeline renders oldest-first.
@@ -130,6 +137,11 @@ class User extends Authenticatable
     public function facilityBookings(): HasMany
     {
         return $this->hasMany(FacilityBooking::class);
+    }
+
+    public function orders(): HasMany
+    {
+        return $this->hasMany(Order::class);
     }
     // ─── Helpers ──────────────────────────────────────────────────────────────
 

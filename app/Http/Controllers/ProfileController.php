@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\EventRsvp;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,6 +26,31 @@ class ProfileController extends Controller
     {
         $user = $request->user()->load(['organization']);
         $isSuperadmin = $user->hasRole(['Superadmin', 'Admin']);
+
+        $attendedPrograms = EventRsvp::query()
+            ->where('user_id', $user->id)
+            ->where('status', 'attended')
+            ->with(['event.organization'])
+            ->latest('attended_at')
+            ->take(12)
+            ->get()
+            ->filter(fn ($rsvp) => $rsvp->event !== null)
+            ->map(fn ($rsvp) => [
+                'id' => $rsvp->id,
+                'event' => [
+                    'id' => $rsvp->event->id,
+                    'title' => $rsvp->event->title,
+                    'start_formatted' => $rsvp->event->start_time->locale('ms')->isoFormat('ddd, D MMM YYYY [•] h:mm A'),
+                    'location_or_link' => $rsvp->event->location_or_link,
+                    'organization' => [
+                        'name' => $rsvp->event->organization?->name,
+                        'color_theme' => $rsvp->event->organization?->color_theme,
+                    ],
+                ],
+                'attended_at' => $rsvp->attended_at?->toISOString(),
+                'attended_at_human' => $rsvp->attended_at?->locale('ms')->isoFormat('D MMM YYYY, h:mm A'),
+            ])
+            ->values();
 
         $history = $user->transitionHistory()
             ->get()
@@ -55,6 +81,7 @@ class ProfileController extends Controller
                 ] : null,
             ],
             'history' => $history,
+            'attendedPrograms' => $attendedPrograms,
         ]);
     }
 
@@ -63,9 +90,20 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): Response
     {
+        $user = $request->user();
+
+        // Load branches belonging to the user's current organisation
+        $branches = $user->current_organization_id
+            ? \App\Models\Branch::where('organization_id', $user->current_organization_id)
+                ->where('is_active', true)
+                ->orderBy('state')
+                ->get(['id', 'name', 'state'])
+            : collect();
+
         return Inertia::render('Profile/Edit', [
-            'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
-            'status' => session('status'),
+            'mustVerifyEmail' => $user instanceof MustVerifyEmail,
+            'status'          => session('status'),
+            'branches'        => $branches,
         ]);
     }
 

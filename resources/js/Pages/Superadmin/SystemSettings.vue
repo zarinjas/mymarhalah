@@ -28,12 +28,12 @@ function uploadSystemLogo() {
 
 <template>
     <AppLayout>
-        <Head title="MyMarhalah Settings" />
+        <Head title="myWAP Settings" />
 
         <div class="mx-auto max-w-4xl space-y-6 px-4 py-6 md:px-6">
             <div>
-                <h1 class="text-2xl font-black text-gray-900">MyMarhalah Settings</h1>
-                <p class="mt-1 text-sm text-gray-500">Tetapan peringkat sistem seperti logo rasmi MyMarhalah.</p>
+                <h1 class="text-2xl font-black text-gray-900">myWAP Settings</h1>
+                <p class="mt-1 text-sm text-gray-500">Tetapan peringkat sistem seperti logo rasmi myWAP.</p>
             </div>
 
             <div v-if="$page.props.flash?.success" class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
@@ -72,7 +72,7 @@ function uploadSystemLogo() {
                             :disabled="form.processing || !canManageSystemLogo"
                             class="rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60"
                         >
-                            {{ form.processing ? 'Memuat naik...' : 'Simpan Logo MyMarhalah' }}
+                            {{ form.processing ? 'Memuat naik...' : 'Simpan Logo myWAP' }}
                         </button>
                     </form>
                 </div>

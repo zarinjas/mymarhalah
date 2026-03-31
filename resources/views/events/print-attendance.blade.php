@@ -253,7 +253,7 @@
 
         {{-- ── Footer ───────────────────────────────────────────────────── --}}
         <div class="doc-footer">
-            <span>MyMarhalah &copy; {{ now()->year }}</span>
+            <span>myWAP &copy; {{ now()->year }}</span>
             <span>Dokumen ini dijana secara automatik oleh sistem.</span>
         </div>
 

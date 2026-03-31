@@ -12,6 +12,10 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
+    Route::get('/api/check-member', [AuthenticatedSessionController::class, 'checkMemberIc'])
+        ->middleware('throttle:20,1')
+        ->name('login.check-member');
+
     Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');
 

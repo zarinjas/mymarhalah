@@ -104,16 +104,16 @@ function scrollBooks(direction) {
                 {{ $page.props.flash.error }}
             </div>
 
-            <div class="space-y-5 md:space-y-7">
-                <section class="relative overflow-hidden rounded-3xl border border-white/30 bg-gradient-to-br from-slate-900 via-emerald-900 to-emerald-700 p-5 text-white shadow-xl md:p-8">
+            <div class="space-y-4 md:space-y-7">
+                <section class="relative overflow-hidden rounded-3xl border border-white/30 bg-gradient-to-br from-slate-900 via-emerald-900 to-emerald-700 p-4 text-white shadow-xl sm:p-5 md:p-8">
                     <div class="absolute -right-16 -top-16 h-60 w-60 rounded-full bg-white/10 blur-2xl"></div>
                     <div class="absolute -bottom-20 left-1/3 h-56 w-56 rounded-full bg-emerald-300/25 blur-2xl"></div>
                     <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.18),transparent_35%)]"></div>
                     <div class="relative z-10 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
                         <div>
                             <p class="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-100/80">Dashboard Command</p>
-                            <h2 class="mt-2 text-2xl font-black leading-tight md:text-3xl lg:text-4xl">Assalamualaikum, {{ member.name }}</h2>
-                            <div class="mt-4 flex flex-wrap items-center gap-3">
+                            <h2 class="mt-2 text-xl font-black leading-tight sm:text-2xl md:text-3xl lg:text-4xl">Assalamualaikum, {{ member.name }}</h2>
+                            <div class="mt-3 flex flex-wrap items-center gap-2.5 sm:mt-4 sm:gap-3">
                                 <span class="inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-semibold ring-1 ring-white/30">
                                     {{ member.organization?.name || 'NGO' }}
                                 </span>
@@ -147,8 +147,8 @@ function scrollBooks(direction) {
                             <Link :href="route('events.index')" class="text-xs font-semibold text-emerald-700 hover:text-emerald-800">Lihat Program</Link>
                         </div>
 
-                        <div class="mt-4 space-y-3">
-                            <div class="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                        <div class="mt-4 space-y-2.5 sm:space-y-3">
+                            <div class="rounded-2xl border border-gray-100 bg-gray-50 p-3.5 sm:p-4">
                                 <div class="flex items-center gap-3">
                                     <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
@@ -160,7 +160,7 @@ function scrollBooks(direction) {
                                 </div>
                             </div>
 
-                            <div class="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                            <div class="rounded-2xl border border-gray-100 bg-gray-50 p-3.5 sm:p-4">
                                 <div class="flex items-center gap-3">
                                     <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v11.494m-5.747-8.62h11.494M4.5 19.5h15a2 2 0 002-2v-11a2 2 0 00-2-2h-15a2 2 0 00-2 2v11a2 2 0 002 2z"/></svg>
@@ -172,7 +172,7 @@ function scrollBooks(direction) {
                                 </div>
                             </div>
 
-                            <div class="rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                            <div class="rounded-2xl border border-gray-100 bg-gray-50 p-3.5 sm:p-4">
                                 <div class="flex items-center justify-between gap-3">
                                     <div class="flex items-center gap-3">
                                         <span class="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
@@ -192,8 +192,13 @@ function scrollBooks(direction) {
                     </section>
 
                     <section class="rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 to-white p-4 shadow-sm md:p-6">
-                        <h3 class="text-base font-black text-gray-900">Status Ahli / Yuran</h3>
-                        <div class="mt-4 rounded-2xl bg-white p-4 ring-1 ring-emerald-100">
+                        <div class="flex items-center justify-between gap-3">
+                            <h3 class="text-base font-black text-gray-900">Status Ahli / Yuran</h3>
+                            <Link :href="route('member.financial.overview')" class="text-xs font-semibold text-emerald-700 hover:text-emerald-800">
+                                Yuran &amp; Bayaran
+                            </Link>
+                        </div>
+                        <div class="mt-4 rounded-2xl bg-white p-3.5 ring-1 ring-emerald-100 sm:p-4">
                             <div class="flex items-center justify-between">
                                 <p class="text-sm font-semibold text-gray-700">Yuran Tahunan</p>
                                 <span class="inline-flex rounded-full px-2.5 py-1 text-xs font-semibold" :class="feeStatus.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'">
@@ -222,9 +227,9 @@ function scrollBooks(direction) {
                 </div>
 
                 <section>
-                    <div class="mb-4 flex items-end justify-between">
+                    <div class="mb-3 flex items-end justify-between md:mb-4">
                         <div>
-                            <h3 class="text-xl font-black text-gray-900 md:text-2xl">Berita Bergambar</h3>
+                            <h3 class="text-lg font-black text-gray-900 sm:text-xl md:text-2xl">Berita Bergambar</h3>
                             <p class="text-sm text-gray-500">Makluman visual terkini untuk ahli.</p>
                         </div>
                     </div>
@@ -250,9 +255,9 @@ function scrollBooks(direction) {
                 </section>
 
                 <section>
-                    <div class="mb-4 flex items-end justify-between">
+                    <div class="mb-3 flex items-end justify-between md:mb-4">
                         <div>
-                            <h3 class="text-xl font-black text-gray-900 md:text-2xl">Infaq &amp; Sumbangan</h3>
+                            <h3 class="text-lg font-black text-gray-900 sm:text-xl md:text-2xl">Infaq &amp; Sumbangan</h3>
                             <p class="text-sm text-gray-500">Sokong program melalui infaq komuniti.</p>
                         </div>
                     </div>
@@ -268,7 +273,7 @@ function scrollBooks(direction) {
                                 <div v-else class="grid h-full place-items-center text-sm text-gray-400">No Image</div>
                             </div>
 
-                            <div class="p-4">
+                            <div class="p-3.5 sm:p-4">
                                 <div class="mb-2 flex items-center gap-2">
                                     <span
                                         class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold"
@@ -331,7 +336,7 @@ function scrollBooks(direction) {
 
                 <section class="rounded-3xl border border-gray-100 bg-white/95 p-4 shadow-sm ring-1 ring-gray-100 md:p-6">
                     <div class="mb-4 flex items-center justify-between">
-                        <h3 class="text-base font-black text-gray-900 md:text-xl">PUSTAKA – JUDUL TERKINI</h3>
+                        <h3 class="text-sm font-black text-gray-900 sm:text-base md:text-xl">PUSTAKA – JUDUL TERKINI</h3>
                         <Link :href="route('member.library')" class="text-sm font-semibold text-emerald-700 hover:text-emerald-800">Lihat Semua Buku</Link>
                     </div>
 

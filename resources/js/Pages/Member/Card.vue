@@ -33,7 +33,7 @@ async function downloadAsJpg() {
 async function shareCard() {
     if (navigator.share) {
         await navigator.share({
-            title: 'MyMarhalah Membership Card',
+            title: 'myWAP Membership Card',
             text: 'Kad keahlian digital saya.',
             url: window.location.href,
         });
@@ -65,14 +65,14 @@ function initials(name) {
                             <img
                                 v-if="card.system_logo_path"
                                 :src="card.system_logo_path"
-                                alt="MyMarhalah Logo"
+                                alt="myWAP Logo"
                                 class="h-8 w-8 object-contain"
                             >
                             <span v-else class="text-[10px] font-bold text-gray-400">MM</span>
                         </div>
 
                         <div>
-                            <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-400">MyMarhalah</p>
+                            <p class="text-[11px] font-semibold uppercase tracking-[0.2em] text-gray-400">myWAP</p>
                             <h1 class="mt-1 text-2xl font-black text-gray-800">Membership Card</h1>
                             <p class="mt-1 text-xs text-gray-500">Member since {{ card.member_since || '—' }}</p>
                         </div>

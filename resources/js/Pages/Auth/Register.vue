@@ -66,7 +66,7 @@ const inferredOrganization = computed(() => {
             <section class="hidden flex-1 lg:block">
                 <div class="max-w-xl">
                     <p class="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-200 backdrop-blur-sm">
-                        MyMarhalah
+                        myWAP
                     </p>
                     <h1 class="mt-5 text-4xl font-black leading-tight text-white xl:text-5xl">
                         Daftar Akaun Baru,

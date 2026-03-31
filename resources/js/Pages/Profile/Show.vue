@@ -14,6 +14,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    attendedPrograms: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 // ─── Dynamic theming  ────────────────────────────────────────────────────────
@@ -145,6 +149,55 @@ const initials = computed(() =>
                             </svg>
                             {{ profileUser.dob }} ({{ profileUser.age }} tahun)
                         </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ════════════════════════════════════════════════════════════ -->
+            <!--  PROGRAM YANG TELAH DIHADIRI                                -->
+            <!-- ════════════════════════════════════════════════════════════ -->
+            <div class="mb-7">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4 px-1">
+                    Program Yang Telah Dihadiri
+                </h3>
+
+                <div
+                    v-if="attendedPrograms.length === 0"
+                    class="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-center"
+                >
+                    <p class="text-sm font-medium text-gray-500">Belum ada rekod kehadiran program.</p>
+                    <p class="text-xs text-gray-400 mt-1">Imbas QR program semasa hadir untuk rekod automatik.</p>
+                </div>
+
+                <div v-else class="space-y-3">
+                    <div
+                        v-for="item in attendedPrograms"
+                        :key="item.id"
+                        class="bg-white border border-gray-100 rounded-xl p-4 shadow-sm"
+                    >
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-sm font-bold text-gray-800 leading-snug line-clamp-2">
+                                    {{ item.event.title }}
+                                </p>
+                                <p class="mt-1 text-xs text-gray-500">{{ item.event.start_formatted }}</p>
+                                <p v-if="item.event.location_or_link" class="mt-0.5 text-xs text-gray-400 line-clamp-1">
+                                    {{ item.event.location_or_link }}
+                                </p>
+                            </div>
+
+                            <span
+                                class="shrink-0 inline-flex items-center text-[11px] font-bold px-2.5 py-1 rounded-full"
+                                :style="{
+                                    backgroundColor: (item.event.organization?.color_theme ?? '#10b981') + '22',
+                                    color: item.event.organization?.color_theme ?? '#10b981',
+                                }"
+                            >
+                                Hadir
+                            </span>
+                        </div>
+
+                        <p class="mt-2 text-[11px] text-gray-400">Direkod pada: {{ item.attended_at_human ?? '—' }}</p>
                     </div>
                 </div>
             </div>

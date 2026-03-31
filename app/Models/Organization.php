@@ -83,6 +83,11 @@ class Organization extends Model
         return $this->hasMany(Facility::class);
     }
 
+    public function branches(): HasMany
+    {
+        return $this->hasMany(Branch::class);
+    }
+
     // ─── Helpers ────────────────────────────────────────────────────────────────
 
     /**

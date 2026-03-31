@@ -54,34 +54,34 @@ function submitCampaign() {
     <AppLayout>
         <template #header>Dashboard Pentadbir</template>
 
-        <div class="relative mx-auto max-w-7xl px-4 py-6 md:px-6">
+        <div class="relative mx-auto max-w-7xl px-4 py-4 md:px-6 md:py-6">
             <div class="pointer-events-none absolute inset-0 -z-10 overflow-hidden rounded-3xl">
                 <div class="absolute -top-20 -left-20 h-56 w-56 rounded-full bg-indigo-200/40 blur-3xl"></div>
                 <div class="absolute top-1/2 -right-10 h-56 w-56 rounded-full bg-emerald-200/40 blur-3xl"></div>
             </div>
             <div class="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-4">
 
-                <section class="md:col-span-2 rounded-3xl border border-white/25 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 p-6 text-white shadow-lg">
+                <section class="md:col-span-2 rounded-3xl border border-white/25 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 p-4 text-white shadow-lg sm:p-5 md:p-6">
                     <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-indigo-200">Overview</p>
-                    <h2 class="mt-2 text-2xl font-black text-white">{{ organization?.name }}</h2>
+                    <h2 class="mt-2 text-xl font-black text-white sm:text-2xl">{{ organization?.name }}</h2>
                     <p class="mt-1 text-sm text-indigo-100/90">Pengurusan ahli dan program organisasi.</p>
                     <div class="mt-4 grid grid-cols-2 gap-3">
-                        <div class="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
+                        <div class="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm sm:p-4">
                             <p class="text-xs text-indigo-100/80">Jumlah Ahli</p>
-                            <p class="mt-1 text-2xl font-black text-white">{{ overview.total_members }}</p>
+                            <p class="mt-1 text-xl font-black text-white sm:text-2xl">{{ overview.total_members }}</p>
                         </div>
-                        <div class="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-sm">
+                        <div class="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm sm:p-4">
                             <p class="text-xs text-indigo-100/80">Yuran Bulan Ini</p>
                             <p class="mt-1 text-xl font-black text-emerald-200">{{ formatCurrency(overview.fees_collected_month) }}</p>
                         </div>
-                        <div class="rounded-2xl border border-white/15 bg-white/10 p-4 col-span-2 md:col-span-1 backdrop-blur-sm">
+                        <div class="col-span-2 rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm sm:p-4 md:col-span-1">
                             <p class="text-xs text-indigo-100/80">Jumlah Program</p>
-                            <p class="mt-1 text-2xl font-black text-cyan-200">{{ overview.total_programs }}</p>
+                            <p class="mt-1 text-xl font-black text-cyan-200 sm:text-2xl">{{ overview.total_programs }}</p>
                         </div>
                     </div>
                 </section>
 
-                <section class="rounded-3xl border border-gray-100 bg-white/90 backdrop-blur-sm p-5 shadow-sm">
+                <section class="rounded-3xl border border-gray-100 bg-white/90 p-4 shadow-sm backdrop-blur-sm sm:p-5">
                     <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-gray-400">Pengurusan</p>
                     <div class="mt-3 space-y-2">
                         <Link :href="managementLinks.create_program_url || managementLinks.create_event_url" class="block rounded-xl bg-gray-900 px-3 py-2 text-center text-xs font-semibold text-white hover:bg-gray-800">
@@ -115,7 +115,7 @@ function submitCampaign() {
                     </div>
                 </section>
 
-                <section class="rounded-3xl border border-gray-100 bg-white/90 backdrop-blur-sm p-5 shadow-sm">
+                <section class="rounded-3xl border border-gray-100 bg-white/90 p-4 shadow-sm backdrop-blur-sm sm:p-5">
                     <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-gray-400">Program Breakdown</p>
                     <div class="mt-3 space-y-2">
                         <div
@@ -137,7 +137,7 @@ function submitCampaign() {
                     </div>
                 </section>
 
-                <section class="md:col-span-3 lg:col-span-4 rounded-3xl border border-gray-100 bg-white/90 backdrop-blur-sm p-5 shadow-sm">
+                <section class="rounded-3xl border border-gray-100 bg-white/90 p-4 shadow-sm backdrop-blur-sm sm:p-5 md:col-span-3 lg:col-span-4">
                     <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-gray-400">Members</p>
@@ -147,7 +147,7 @@ function submitCampaign() {
                     </div>
                 </section>
 
-                <section v-if="!isManagementView" id="create-campaign" class="md:col-span-3 lg:col-span-4 rounded-3xl border border-gray-100 bg-white/90 backdrop-blur-sm p-5 shadow-sm">
+                <section v-if="!isManagementView" id="create-campaign" class="rounded-3xl border border-gray-100 bg-white/90 p-4 shadow-sm backdrop-blur-sm sm:p-5 md:col-span-3 lg:col-span-4">
                     <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-gray-400">Create Campaign</p>
                     <form class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2" @submit.prevent="submitCampaign">
                         <div class="md:col-span-1">

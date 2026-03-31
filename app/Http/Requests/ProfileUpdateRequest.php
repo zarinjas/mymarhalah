@@ -31,7 +31,7 @@ class ProfileUpdateRequest extends FormRequest
             'education_level' => ['nullable', 'string', 'max:120'],
             'current_profession' => ['nullable', 'string', 'max:120'],
             'industry' => ['nullable', 'string', 'max:120'],
-            'branch_name' => ['nullable', 'string', 'max:120'],
+            'branch_id' => ['nullable', 'exists:branches,id'],
             'locality' => ['nullable', 'string', 'max:120'],
             'expertise' => ['nullable', 'string', 'max:255'],
             'linkedin_url' => ['nullable', 'url', 'max:255'],

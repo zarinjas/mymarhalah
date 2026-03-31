@@ -40,6 +40,9 @@ class DatabaseSeeder extends Seeder
             LibraryItemsTableSeeder::class,
             CampaignsTableSeeder::class,
             DashboardBannersTableSeeder::class,
+
+            // --- E-Commerce (Dummy Catalog) ---
+            EcommerceDummySeeder::class,
             
             // Tambah lagi fail seeder iseed abang kat bawah ni kalau ada...
         ]);

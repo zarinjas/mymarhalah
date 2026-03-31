@@ -10,6 +10,9 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
+use App\Models\Organization;
+use App\Models\Announcement;
+
 class BroadcastController extends Controller
 {
     public function index(Request $request): Response
@@ -36,11 +39,38 @@ class BroadcastController extends Controller
             ->orderBy('name')
             ->get();
 
+        $announcementsQuery = Announcement::query()->with('organization:id,name,slug');
+        if (! $isSuperadmin) {
+            $announcementsQuery->where('organization_id', $user->current_organization_id);
+        }
+
+        $announcements = $announcementsQuery
+            ->latest('published_at')
+            ->latest('id')
+            ->take(50)
+            ->get()
+            ->map(fn (Announcement $item) => [
+                'id' => $item->id,
+                'organization_id' => $item->organization_id,
+                'organization_name' => $item->organization?->name,
+                'title' => $item->title,
+                'content' => $item->content,
+                'is_pinned' => (bool)$item->is_pinned,
+                'published_at' => $item->published_at?->toDateTimeString(),
+                'published_human' => $item->published_at?->locale('ms')->isoFormat('D MMM YYYY, h:mm A'),
+            ]);
+
+        $organizations = $isSuperadmin
+                ? Organization::query()->orderBy('min_age')->get(['id', 'name', 'slug'])
+                : collect([['id' => $user->organization?->id, 'name' => $user->organization?->name]]);
+
         return Inertia::render('Admin/Broadcasts', [
             'recentMessages' => $messages,
             'usrahGroups' => $usrahGroups,
             'defaultOrganizationId' => $user->current_organization_id,
             'isSuperadmin' => $isSuperadmin,
+            'announcements' => $announcements,
+            'organizations' => $organizations,
         ]);
     }
 

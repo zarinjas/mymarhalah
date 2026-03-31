@@ -39,6 +39,13 @@ const showingNavigationDropdown = ref(false);
                                 >
                                     Dashboard
                                 </NavLink>
+                                <NavLink
+                                    v-if="$page.props.auth.user && ($page.props.auth.user.roles?.includes('Admin') || $page.props.auth.user.roles?.includes('Superadmin'))"
+                                    :href="route('admin.attendance')"
+                                    :active="route().current('admin.attendance')"
+                                >
+                                    Kehadiran Program
+                                </NavLink>
                             </div>
                         </div>
 

@@ -15,6 +15,54 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class EventController extends Controller
 {
+    /**
+     * adminAttendance()
+     *
+     * Returns a filtered list of events with attendance counts for admin view.
+     * Filters: start date, end date, status (hadir/tidak_hadir)
+     */
+    public function adminAttendance(Request $request): \Inertia\Response
+    {
+        $user = $request->user();
+        $query = Event::with(['organization', 'rsvps' => function($q) {
+            $q->with('user:id');
+        }]);
+
+        // Filter by organization if not superadmin
+        if (! $user->hasRole('Superadmin')) {
+            $query->where('organization_id', $user->current_organization_id);
+        }
+
+        // Filter by date
+        if ($request->filled('start')) {
+            $query->whereDate('start_time', '>=', $request->input('start'));
+        }
+        if ($request->filled('end')) {
+            $query->whereDate('start_time', '<=', $request->input('end'));
+        }
+
+        $events = $query->orderBy('start_time', 'desc')->get();
+
+        // Filter by status (hadir/tidak_hadir)
+        $status = $request->input('status');
+        $filtered = $events->map(function($event) use ($status) {
+            $attendanceCount = $event->rsvps->where('status', 'attended')->count();
+            $eventArr = [
+                'id' => $event->id,
+                'title' => $event->title,
+                'start_formatted' => $event->start_time->locale('ms')->isoFormat('ddd, D MMM YYYY [•] h:mm A'),
+                'location_or_link' => $event->location_or_link,
+                'attendance_count' => $attendanceCount,
+            ];
+            if ($status === 'hadir' && $attendanceCount === 0) return null;
+            if ($status === 'tidak_hadir' && $attendanceCount > 0) return null;
+            return $eventArr;
+        })->filter()->values();
+
+        return Inertia::render('Events/AdminAttendance', [
+            'adminAttendance' => $filtered,
+        ]);
+    }
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
     /**
@@ -61,23 +109,89 @@ class EventController extends Controller
     {
         $user = $request->user();
 
-        $query = Event::with(['organization', 'rsvps'])
-            ->where('start_time', '>=', now())
-            ->orderBy('start_time');
+        $tab = $request->input('tab', 'upcoming');
+        $search = $request->input('search');
+        $typeFilter = $request->input('type');
+
+        $query = Event::with(['organization', 'rsvps.user']);
+
+        if ($tab === 'past') {
+            $query->where('start_time', '<', now())->orderBy('start_time', 'desc');
+        } else {
+            $query->where('start_time', '>=', now())->orderBy('start_time', 'asc');
+        }
 
         if (! $user->hasRole('Superadmin')) {
             $query->where('organization_id', $user->current_organization_id);
         }
 
-        $events = $query->paginate(12)->through(
-            fn (Event $e) => $this->serializeEvent($e, $user->id)
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('location_or_link', 'like', "%{$search}%");
+            });
+        }
+
+        if ($typeFilter) {
+            $query->where('type', $typeFilter);
+        }
+
+
+        $events = $query->paginate(12)->withQueryString()->through(
+            function (Event $e) use ($user) {
+                $eventArr = $this->serializeEvent($e, $user->id);
+                // For admin/superadmin, include attendance list for modal
+                if ($user->hasRole(['Superadmin', 'Admin'])) {
+                    $eventArr['attendance'] = $e->rsvps
+                        ->where('status', 'attended')
+                        ->map(function ($rsvp) {
+                            return [
+                                'name' => $rsvp->user?->name ?? 'Ahli Dibuang',
+                                'email' => $rsvp->user?->email ?? '-',
+                                'phone' => $rsvp->user?->phone ?? '-',
+                                'attended_at' => optional($rsvp->attended_at)->format('d/m/Y H:i'),
+                            ];
+                        })->values();
+                }
+                return $eventArr;
+            }
         );
+
+        // Senarai program yang telah dihadiri oleh user (ahli)
+        $attendedEvents = [];
+        if ($user->hasRole('Member')) {
+            $attended = EventRsvp::where('user_id', $user->id)
+                ->where('status', 'attended')
+                ->with(['event.organization'])
+                ->orderByDesc('attended_at')
+                ->get();
+            $attendedEvents = $attended->map(function ($rsvp) {
+                $event = $rsvp->event;
+                return [
+                    'id' => $event->id,
+                    'title' => $event->title,
+                    'organization' => [
+                        'name' => $event->organization->name,
+                        'color_theme' => $event->organization->color_theme,
+                    ],
+                    'start_formatted' => $event->start_time->locale('ms')->isoFormat('ddd, D MMM YYYY [•] h:mm A'),
+                    'location_or_link' => $event->location_or_link,
+                    'attended_at' => optional($rsvp->attended_at)->format('d/m/Y H:i'),
+                ];
+            });
+        }
 
         return Inertia::render('Events/Index', [
             'events' => $events,
+            'tab' => $tab,
+            'filters' => [
+                'search' => $search,
+                'type' => $typeFilter,
+            ],
             'organizations' => $user->hasRole('Superadmin')
                 ? Organization::query()->orderBy('min_age')->get(['id', 'name', 'slug'])
                 : [],
+            'attendedEvents' => $attendedEvents,
         ]);
     }
 

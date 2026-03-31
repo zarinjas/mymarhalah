@@ -28,8 +28,11 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email'],
+            'login_type' => ['nullable', 'in:admin,member'],
+            'email' => ['required_if:login_type,admin', 'nullable', 'string', 'email'],
+            'ic_number' => ['required_if:login_type,member', 'nullable', 'string', 'max:32'],
             'password' => ['required', 'string'],
+            'remember' => ['nullable', 'boolean'],
         ];
     }
 
@@ -42,11 +45,24 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('email', 'password'), $this->boolean('remember'))) {
+        $loginType = $this->string('login_type')->toString();
+        $identifierField = $loginType === 'member' ? 'ic_number' : 'email';
+
+        $credentials = [
+            'password' => $this->input('password'),
+        ];
+
+        if ($identifierField === 'email') {
+            $credentials['email'] = Str::lower(trim((string) $this->input('email')));
+        } else {
+            $credentials['ic_number'] = $this->normalizedIcNumber();
+        }
+
+        if (! Auth::attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                $identifierField => trans('auth.failed'),
             ]);
         }
 
@@ -69,7 +85,7 @@ class LoginRequest extends FormRequest
         $seconds = RateLimiter::availableIn($this->throttleKey());
 
         throw ValidationException::withMessages([
-            'email' => trans('auth.throttle', [
+            $this->identifierField() => trans('auth.throttle', [
                 'seconds' => $seconds,
                 'minutes' => ceil($seconds / 60),
             ]),
@@ -81,6 +97,30 @@ class LoginRequest extends FormRequest
      */
     public function throttleKey(): string
     {
-        return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+        $identifier = $this->identifierField() === 'ic_number'
+            ? $this->normalizedIcNumber()
+            : Str::lower(trim((string) $this->input('email')));
+
+        return Str::transliterate($identifier.'|'.$this->ip());
+    }
+
+    private function identifierField(): string
+    {
+        if ($this->string('login_type')->toString() === 'member') {
+            return 'ic_number';
+        }
+
+        if ($this->filled('ic_number') && ! $this->filled('email')) {
+            return 'ic_number';
+        }
+
+        return 'email';
+    }
+
+    private function normalizedIcNumber(): string
+    {
+        $raw = (string) $this->input('ic_number');
+
+        return Str::upper(preg_replace('/\s+/', '', trim($raw)) ?? '');
     }
 }

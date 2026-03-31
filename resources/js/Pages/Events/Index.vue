@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -7,7 +7,19 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
     events: Object, // Laravel paginator object
+    tab: {
+        type: String,
+        default: 'upcoming',
+    },
+    filters: {
+        type: Object,
+        default: () => ({ search: '', type: '' }),
+    },
     organizations: {
+        type: Array,
+        default: () => [],
+    },
+    attendedEvents: {
         type: Array,
         default: () => [],
     },
@@ -103,6 +115,25 @@ function submitCreateProgram() {
         },
     });
 }
+// ─── Filters & Search ────────────────────────────────────────────────────────
+const searchQuery = ref(props.filters?.search ?? '');
+const typeFilter  = ref(props.filters?.type ?? '');
+
+function customDebounce(fn, wait) {
+    let timer;
+    return function (...args) {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), wait);
+    };
+}
+
+watch([searchQuery, typeFilter], customDebounce(([newSearch, newType]) => {
+    router.get(
+        route('events.index'),
+        { tab: props.tab, search: newSearch, type: newType },
+        { preserveState: true, preserveScroll: true, replace: true }
+    );
+}, 300));
 </script>
 
 <template>
@@ -111,29 +142,103 @@ function submitCreateProgram() {
     <AppLayout>
         <template #header>Program &amp; Acara</template>
 
-        <div class="max-w-7xl mx-auto px-4 md:px-6 py-6">
+        <div class="max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10">
 
-            <!-- Page header row -->
-            <div class="flex items-center justify-between mb-6">
-                <div>
-                    <h2 class="text-xl font-bold text-gray-800">Program Akan Datang</h2>
-                    <p class="text-sm text-gray-400 mt-0.5">{{ events.total }} program dijumpai</p>
+            <!-- Page Header & Actions Row -->
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+                <div class="space-y-1">
+                    <h2 class="text-3xl font-black tracking-tight text-gray-900">
+                        {{ isSuperadmin ? 'Pengurusan Program' : 'Program & Acara' }}
+                    </h2>
+                    <p class="text-sm font-medium text-gray-500">
+                        {{ tab === 'past' ? 'Senarai program yang telah berlalu.' : 'Ketahui dan sertai program yang akan datang.' }}
+                    </p>
                 </div>
-                <button
-                    v-if="isSuperadmin"
-                    @click="openCreateProgramModal"
-                    class="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-700"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                    Add New Program
-                </button>
+                
+                <div class="flex flex-wrap items-center gap-3">
+                    <!-- Tab Switcher -->
+                    <div class="flex items-center rounded-2xl bg-gray-100/80 p-1 border border-gray-200">
+                        <button 
+                            @click="router.get(route('events.index'), { tab: 'upcoming', search: searchQuery, type: typeFilter }, { preserveState: true })"
+                            :class="[
+                                'px-4 py-2 text-sm font-bold rounded-xl transition-all',
+                                tab === 'upcoming' ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-700'
+                            ]"
+                        >
+                            Akan Datang
+                        </button>
+                        <button 
+                            @click="router.get(route('events.index'), { tab: 'past', search: searchQuery, type: typeFilter }, { preserveState: true })"
+                            :class="[
+                                'px-4 py-2 text-sm font-bold rounded-xl transition-all',
+                                tab === 'past' ? 'bg-white text-gray-900 shadow-sm ring-1 ring-gray-900/5' : 'text-gray-500 hover:text-gray-700'
+                            ]"
+                        >
+                            Telah Berlalu
+                        </button>
+                    </div>
+
+                    <!-- Add Button -->
+                    <button
+                        v-if="isSuperadmin"
+                        @click="openCreateProgramModal"
+                        class="inline-flex items-center gap-2 rounded-2xl bg-gray-900 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-gray-800 transition-all hover:-translate-y-0.5"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                        </svg>
+                        Tambah Program
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filters Row -->
+            <div class="flex flex-col sm:flex-row gap-3 mb-10">
+                <!-- Search Box -->
+                <div class="relative flex-1 max-w-sm">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <svg class="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                    </div>
+                    <input
+                        v-model="searchQuery"
+                        type="text"
+                        placeholder="Cari nama atau tajuk program..."
+                        class="pl-10 w-full rounded-2xl border-gray-200 text-sm focus:border-gray-900 focus:ring-gray-900 shadow-sm transition-colors"
+                    >
+                    <button 
+                        v-if="searchQuery" 
+                        @click="searchQuery = ''" 
+                        class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    >
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Type Selector -->
+                <div class="relative max-w-[180px]">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <svg class="h-4 w-4 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
+                    </div>
+                    <select
+                        v-model="typeFilter"
+                        class="pl-10 w-full rounded-2xl border-gray-200 text-sm focus:border-gray-900 focus:ring-gray-900 shadow-sm transition-colors text-gray-700 bg-white"
+                    >
+                        <option value="">Semua Format</option>
+                        <option value="physical">Fizikal</option>
+                        <option value="online">Dalam Talian</option>
+                    </select>
+                </div>
             </div>
 
             <!-- Empty state -->
-            <div v-if="events.data.length === 0" class="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
-                <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gray-50">
+            <div v-if="events.data.length === 0" class="bg-white rounded-3xl border border-dashed border-gray-200 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.03)] p-16 text-center">
+                <div class="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-50 border border-gray-100">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                     </svg>
@@ -143,65 +248,81 @@ function submitCreateProgram() {
             </div>
 
             <!-- Event Grid: 1 col → 2 col (sm) → 3 col (lg) -->
-            <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 <article
                     v-for="event in events.data"
                     :key="event.id"
-                    class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden
-                           hover:-translate-y-1 hover:shadow-md transition-all duration-200 cursor-pointer group"
+                    class="group relative bg-white rounded-3xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.04)] ring-1 ring-gray-100 overflow-hidden
+                           hover:-translate-y-1 hover:shadow-xl hover:shadow-gray-200/40 transition-all duration-300 cursor-pointer flex flex-col"
                     @click="openModal(event)"
                 >
                     <!-- Featured Image -->
-                    <div class="relative aspect-video overflow-hidden bg-gray-100">
+                    <div class="relative aspect-[4/3] overflow-hidden bg-gray-50 shrink-0">
                         <img
                             :src="event.featured_image_url"
                             :alt="event.title"
-                            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            class="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                            :class="tab === 'past' ? 'grayscale opacity-75 group-hover:grayscale-0 group-hover:opacity-100' : ''"
                             loading="lazy"
                         />
+                        <div class="absolute inset-0 bg-gradient-to-t from-gray-900/60 via-gray-900/10 to-transparent opacity-60"></div>
 
-                        <!-- Type badge (top-left) -->
-                        <span
-                            :class="['absolute top-3 left-3 inline-flex items-center text-[11px] font-bold px-2.5 py-1 rounded-full backdrop-blur-sm',
-                                     typeConfig[event.type]?.classes ?? 'bg-gray-100 text-gray-600']"
-                        >
-                            {{ typeConfig[event.type]?.label ?? event.type }}
-                        </span>
+                        <!-- Organization Badge -->
+                        <div class="absolute top-4 left-4 bg-white/95 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-white/20 shadow-sm flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full" :style="{ backgroundColor: event.organization.color_theme }"></span>
+                            <span class="text-[10px] font-black uppercase tracking-wider text-gray-900">{{ event.organization.name }}</span>
+                        </div>
 
-                        <!-- My RSVP badge (top-right) — only shown if user has RSVPed -->
+                        <!-- Date Overlay (Bottom Left) -->
+                        <div class="absolute bottom-4 left-4">
+                            <div class="bg-white/95 backdrop-blur-md rounded-2xl p-2.5 flex items-center gap-3 shadow-sm border border-white/20">
+                                <div class="flex flex-col items-center justify-center bg-gray-50 rounded-xl w-10 h-10 border border-gray-100">
+                                    <span class="text-[10px] font-bold text-gray-400 leading-none uppercase">{{ new Date(event.start_time).toLocaleString('ms-MY', { month: 'short' }) }}</span>
+                                    <span class="text-base font-black text-gray-900 leading-none mt-0.5">{{ new Date(event.start_time).getDate() }}</span>
+                                </div>
+                                <div class="flex flex-col justify-center">
+                                    <span class="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Masa</span>
+                                    <span class="text-xs font-black text-gray-900">
+                                        {{ new Date(event.start_time).toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true }) }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- My RSVP badge (top-right) -->
                         <span
                             v-if="event.my_rsvp"
-                            :class="['absolute top-3 right-3 inline-flex items-center text-[11px] font-bold px-2.5 py-1 rounded-full backdrop-blur-sm',
+                            :class="['absolute top-4 right-4 inline-flex items-center text-[10px] uppercase tracking-wider font-black px-3 py-1.5 rounded-xl shadow-sm border border-white/20 backdrop-blur-md',
                                      rsvpConfig[event.my_rsvp]?.classes]"
                         >
                             {{ rsvpConfig[event.my_rsvp]?.label }}
                         </span>
                     </div>
 
-                    <!-- Card body -->
-                    <div class="p-5 space-y-2">
-                        <!-- Org pill -->
-                        <span
-                            class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
-                            :style="{ backgroundColor: event.organization.color_theme + '22', color: event.organization.color_theme }"
-                        >
-                            {{ event.organization.name }}
-                        </span>
+                    <div class="p-5 flex flex-col flex-1">
+                        <div class="flex-1 space-y-3">
+                            <div class="flex items-start justify-between gap-3">
+                                <h3 class="font-bold text-gray-900 text-[15px] leading-snug line-clamp-2">
+                                    {{ event.title }}
+                                </h3>
+                                <span
+                                    :class="['shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-xl border opacity-80',
+                                            typeConfig[event.type]?.classes ?? 'bg-gray-50 border-gray-100 text-gray-400']"
+                                    :title="typeConfig[event.type]?.label"
+                                >
+                                    <svg v-if="event.type === 'physical'" xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    </svg>
+                                </span>
+                            </div>
 
-                        <h3 class="font-bold text-gray-800 text-sm leading-snug line-clamp-2">
-                            {{ event.title }}
-                        </h3>
-
-                        <!-- Date and location row -->
-                        <div class="space-y-1 pt-1">
-                            <p class="flex items-center gap-1.5 text-xs text-gray-500">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
-                                </svg>
-                                {{ event.start_formatted }}
-                            </p>
-                            <p v-if="event.location_or_link" class="flex items-center gap-1.5 text-xs text-gray-400 truncate">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                            <!-- Location -->
+                            <p v-if="event.location_or_link" class="flex items-center gap-2 text-xs font-medium text-gray-500 line-clamp-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-gray-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
                                 </svg>
@@ -209,36 +330,92 @@ function submitCreateProgram() {
                             </p>
                         </div>
 
-                        <!-- Footer: RSVP count + CTA -->
-                        <div class="flex items-center justify-between pt-2 border-t border-gray-50 mt-3">
-                            <span class="text-xs text-gray-400">{{ event.rsvp_count }} akan hadir</span>
-                            <button
-                                class="text-xs font-semibold px-3 py-1.5 rounded-xl text-white transition-opacity hover:opacity-90"
-                                :style="{ backgroundColor: event.organization.color_theme }"
-                            >
-                                {{ isSuperadmin ? 'Lihat Butiran' : (event.my_rsvp ? 'Kemaskini RSVP' : 'Daftar Hadir') }}
-                            </button>
+                        <!-- Footer -->
+                        <div class="flex items-center justify-between pt-4 border-t border-gray-100 mt-4">
+                            <div class="flex -space-x-1.5">
+                                <div class="w-6 h-6 rounded-full bg-gray-100 ring-2 ring-white border border-gray-200 flex items-center justify-center shadow-sm z-10">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                                <div class="flex items-center text-[10px] font-bold text-gray-400 bg-gray-50 uppercase tracking-wider pl-3 pr-2 py-1 rounded-r-lg ring-1 ring-inset ring-gray-100">
+                                    {{ event.rsvp_count }} Hadir
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center gap-1.5 font-bold text-sm group-hover:gap-2 transition-all"
+                                 :style="{ color: tab === 'past' ? '#6b7280' : event.organization.color_theme }">
+                                {{ tab === 'past' ? 'Lihat' : (isSuperadmin ? 'Urus' : 'Sertai') }}
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+                                </svg>
+                            </div>
                         </div>
                     </div>
                 </article>
             </div>
 
             <!-- Pagination -->
-            <div v-if="events.last_page > 1" class="flex justify-center mt-8 gap-2">
+            <div v-if="events.last_page > 1" class="flex justify-center mt-12 gap-2">
                 <a
                     v-for="link in events.links"
                     :key="link.label"
                     :href="link.url ?? '#'"
                     v-html="link.label"
                     :class="[
-                        'inline-flex items-center justify-center h-9 min-w-9 px-3 rounded-xl text-sm font-medium transition-colors',
+                        'inline-flex items-center justify-center h-10 min-w-10 px-3 rounded-2xl text-sm font-bold transition-all',
                         link.active
-                            ? 'bg-gray-900 text-white'
+                            ? 'bg-gray-900 text-white shadow-md'
                             : link.url
-                                ? 'bg-white border border-gray-100 text-gray-600 hover:border-gray-300'
-                                : 'bg-white border border-gray-100 text-gray-300 pointer-events-none',
+                                ? 'bg-white border text-gray-600 hover:border-gray-900 shadow-sm'
+                                : 'bg-transparent text-gray-300 pointer-events-none',
                     ]"
                 />
+            </div>
+
+            <!-- Attended Programs Section (for Member) -->
+            <div v-if="attendedEvents.length > 0" class="mt-12">
+                <h2 class="text-lg font-bold text-gray-800 mb-4">Program yang Telah Dihadiri</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <article
+                        v-for="event in attendedEvents"
+                        :key="event.id"
+                        class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+                    >
+                        <div class="p-5 space-y-2">
+                            <span
+                                class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full"
+                                :style="{ backgroundColor: event.organization.color_theme + '22', color: event.organization.color_theme }"
+                            >
+                                {{ event.organization.name }}
+                            </span>
+                            <h3 class="font-bold text-gray-800 text-sm leading-snug line-clamp-2">
+                                {{ event.title }}
+                            </h3>
+                            <div class="space-y-1 pt-1">
+                                <p class="flex items-center gap-1.5 text-xs text-gray-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                                    </svg>
+                                    {{ event.start_formatted }}
+                                </p>
+                                <p v-if="event.location_or_link" class="flex items-center gap-1.5 text-xs text-gray-400 truncate">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-gray-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                    </svg>
+                                    {{ event.location_or_link }}
+                                </p>
+                                <p class="flex items-center gap-1.5 text-xs text-emerald-600">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-emerald-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                    Hadir pada {{ event.attended_at }}
+                                </p>
+                            </div>
+                        </div>
+                    </article>
+                </div>
             </div>
         </div>
 
@@ -492,8 +669,51 @@ function submitCreateProgram() {
                                     </div>
                                 </div>
 
-                                <div v-else class="rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3 text-xs text-amber-700">
-                                    Akaun Superadmin adalah untuk pengurusan program sahaja dan tidak merekod RSVP/kehadiran.
+                                <div v-else class="space-y-2">
+                                    <div class="rounded-2xl bg-amber-50 border border-amber-100 px-4 py-3 text-xs text-amber-700">
+                                        Akaun pentadbir menggunakan mod pengurusan kehadiran (QR + senarai peserta hadir).
+                                    </div>
+                                    <div class="grid grid-cols-1 gap-2 sm:grid-cols-2 mb-2">
+                                        <a
+                                            :href="route('events.qr', { event: selectedEvent.id })"
+                                            class="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-semibold text-white hover:bg-emerald-700"
+                                        >
+                                            Papar QR Kehadiran
+                                        </a>
+                                        <a
+                                            :href="route('events.print', { event: selectedEvent.id })"
+                                            target="_blank"
+                                            class="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                                        >
+                                            Senarai Kehadiran
+                                        </a>
+                                    </div>
+                                    <div class="bg-white border border-gray-100 rounded-xl p-3">
+                                        <div class="font-semibold text-xs text-gray-700 mb-2">Senarai Kehadiran Program</div>
+                                        <table class="min-w-full text-xs">
+                                            <thead>
+                                                <tr class="text-gray-400">
+                                                    <th class="px-2 py-1 text-left">#</th>
+                                                    <th class="px-2 py-1 text-left">Nama</th>
+                                                    <th class="px-2 py-1 text-left">E-mel</th>
+                                                    <th class="px-2 py-1 text-left">Telefon</th>
+                                                    <th class="px-2 py-1 text-left">Masa Hadir</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <tr v-for="(att, i) in selectedEvent.attendance || []" :key="i">
+                                                    <td class="px-2 py-1">{{ i + 1 }}</td>
+                                                    <td class="px-2 py-1">{{ att.name }}</td>
+                                                    <td class="px-2 py-1">{{ att.email }}</td>
+                                                    <td class="px-2 py-1">{{ att.phone || '—' }}</td>
+                                                    <td class="px-2 py-1">{{ att.attended_at || '—' }}</td>
+                                                </tr>
+                                                <tr v-if="!selectedEvent.attendance || selectedEvent.attendance.length === 0">
+                                                    <td colspan="5" class="px-2 py-4 text-center text-gray-400">Tiada kehadiran direkodkan.</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
                                 </div>
 
                                 <!-- Google Calendar button -->

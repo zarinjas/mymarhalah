@@ -125,7 +125,7 @@ function formatDate(iso) {
 
             <!-- Footer -->
             <p class="text-center text-[11px] text-gray-300 mt-4">
-                MyMarhalah &middot; {{ event.organization?.name }}
+                myWAP &middot; {{ event.organization?.name }}
             </p>
         </div>
     </div>

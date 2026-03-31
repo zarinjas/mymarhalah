@@ -59,38 +59,42 @@ class InformationHubAdminController extends Controller
         $user = $request->user()->load('organization');
         $isSuperadmin = $user->hasRole('Superadmin');
 
-        $announcements = Announcement::query()
-            ->with('organization:id,name,slug')
-            ->latest('published_at')
-            ->latest('id')
-            ->take(50)
-            ->get()
-            ->map(fn (Announcement $item) => [
-                'id' => $item->id,
-                'organization_id' => $item->organization_id,
-                'organization_name' => $item->organization?->name,
-                'title' => $item->title,
-                'content' => $item->content,
-                'is_pinned' => $item->is_pinned,
-                'published_at' => $item->published_at?->toDateTimeString(),
-                'published_human' => $item->published_at?->locale('ms')->isoFormat('D MMM YYYY, h:mm A'),
-            ]);
+        $search = $request->input('search');
+        $organizationIdFilter = $request->input('organization_id');
+        $roleFilter = $request->input('role');
 
-        $libraryItems = LibraryItem::query()
-            ->with('organization:id,name,slug')
-            ->latest()
-            ->take(100)
-            ->get()
-            ->map(fn (LibraryItem $item) => [
-                'id' => $item->id,
-                'organization_id' => $item->organization_id,
-                'organization_name' => $item->organization?->name,
-                'title' => $item->title,
-                'description' => $item->description,
-                'file_path' => $item->file_path,
-                'cover_image_path' => $item->cover_image_path,
-                'category' => $item->category,
-                'created_at' => $item->created_at?->toDateTimeString(),
+        $query = User::query()->with(['organization:id,name', 'branch:id,name,organization_id', 'roles']);
+
+        if (! $isSuperadmin) {
+            $query->where('current_organization_id', $user->current_organization_id);
+        } elseif ($organizationIdFilter) {
+            $query->where('current_organization_id', $organizationIdFilter);
+        }
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        if ($roleFilter) {
+            $query->whereHas('roles', function ($q) use ($roleFilter) {
+                $q->where('name', $roleFilter);
+            });
+        }
+
+        $members = $query->latest()->paginate(20)->withQueryString()
+            ->through(fn(User $u) => [
+                'id' => $u->id,
+                'name' => $u->name,
+                'email' => $u->email,
+                'phone' => $u->phone,
+                'organization_name' => $u->organization?->name ?? 'Tiada Organisasi',
+                'branch_name' => $u->branch?->name ?? 'Tiada Cawangan',
+                'role' => $u->roles->pluck('name')->first() ?? 'Member',
+                'is_active' => true, // placeholder if we decide to implement suspension
             ]);
 
         return Inertia::render('Admin/InformationHubManage', [
@@ -105,8 +109,12 @@ class InformationHubAdminController extends Controller
                     'min_age' => $user->organization?->min_age,
                     'max_age' => $user->organization?->max_age,
                 ]]),
-            'announcements' => $announcements,
-            'libraryItems' => $libraryItems,
+            'members' => $members,
+            'filters' => [
+                'search' => $search,
+                'organization_id' => $organizationIdFilter,
+                'role' => $roleFilter,
+            ]
         ]);
     }
 
@@ -305,6 +313,25 @@ class InformationHubAdminController extends Controller
         ]);
 
         return back()->with('success', 'Dokumen PDF berjaya dikemas kini.');
+    }
+
+    public function updateRole(Request $request, User $user): RedirectResponse
+    {
+        $this->authorizeOrganizationAccess($request->user(), $user->current_organization_id ?? 0);
+
+        $data = $request->validate([
+            'role' => ['required', 'string', 'in:Admin,Member'],
+        ]);
+
+        // Prevent Superadmin from being demoted or others from becoming Superadmin through this route
+        if ($user->hasRole('Superadmin') || $data['role'] === 'Superadmin') {
+            abort(403, 'Akses ditolak.');
+        }
+
+        // We only allow syncing Admin or Member roles here.
+        $user->syncRoles([$data['role']]);
+
+        return back()->with('success', 'Peranan ahli berjaya dikemas kini.');
     }
 
     private function resolveOrganizationId($user, ?int $submittedOrganizationId): int

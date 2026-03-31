@@ -72,7 +72,7 @@ function uploadOrganizationLogo(organization) {
             </div>
 
             <section class="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
-                <h2 class="text-lg font-black text-gray-800">Logo Sistem (MyMarhalah)</h2>
+                <h2 class="text-lg font-black text-gray-800">Logo Sistem (myWAP)</h2>
                 <p class="mt-1 text-xs text-gray-500">Cadangan saiz: 512 × 512px (nisbah 1:1), format PNG/SVG dengan latar transparen.</p>
 
                 <div class="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">

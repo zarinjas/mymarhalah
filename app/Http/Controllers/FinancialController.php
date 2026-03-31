@@ -8,6 +8,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class FinancialController extends Controller
 {
@@ -66,7 +68,7 @@ class FinancialController extends Controller
         return back()->with('success', 'Kempen infaq berjaya dicipta.');
     }
 
-    public function memberOverview(Request $request): JsonResponse
+    public function memberOverview(Request $request): Response
     {
         $user = $request->user();
 
@@ -107,18 +109,18 @@ class FinancialController extends Controller
             ->latest('created_at')
             ->first();
 
-        $feeStatus = $latestFeePayment && $latestFeePayment->created_at->gte(now()->subYear())
+        $feeStatusValue = $latestFeePayment && $latestFeePayment->created_at->gte(now()->subYear())
             ? 'active'
             : 'due';
 
-        return response()->json([
+        return Inertia::render('Member/Financial/Overview', [
             'campaigns' => $campaigns,
-            'fee_status' => [
-                'status' => $feeStatus,
-                'amount_due' => $feeStatus === 'active' ? 0 : 120,
+            'feeStatus' => [
+                'status' => $feeStatusValue,
+                'amount_due' => $feeStatusValue === 'active' ? 0 : 120,
                 'last_paid_at' => $latestFeePayment?->created_at?->toISOString(),
             ],
-            'payment_history' => $paymentHistory,
+            'paymentHistory' => $paymentHistory,
         ]);
     }
 }

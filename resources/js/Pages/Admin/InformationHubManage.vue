@@ -1,7 +1,16 @@
 <script setup>
-import { Head, Link, useForm } from '@inertiajs/vue3';
+import { ref, computed, watch } from 'vue';
+import { Head, Link, useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { computed, ref } from 'vue';
+
+// Simplified debouncer since we already removed lodash earlier
+function customDebounce(fn, wait) {
+    let timer;
+    return function (...args) {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), wait);
+    };
+}
 
 const props = defineProps({
     isSuperadmin: Boolean,
@@ -10,31 +19,17 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
-    announcements: {
-        type: Array,
-        default: () => [],
+    members: {
+        type: Object,
+        default: () => ({ data: [], links: [] }),
     },
-    libraryItems: {
-        type: Array,
-        default: () => [],
+    filters: {
+        type: Object,
+        default: () => ({ search: '', organization_id: '', role: '' }),
     },
 });
 
-const announcementForm = useForm({
-    organization_id: props.defaultOrganizationId,
-    title: '',
-    content: '',
-    is_pinned: false,
-    published_at: '',
-});
-
-const libraryForm = useForm({
-    organization_id: props.defaultOrganizationId,
-    title: '',
-    description: '',
-    category: 'Umum',
-    pdf_file: null,
-});
+// ─── Add Member Form ─────────────────────────────────────────────────────────
 
 const showMemberForm = ref(false);
 const memberForm = useForm({
@@ -45,129 +40,21 @@ const memberForm = useForm({
     password: '',
 });
 
-const editingAnnouncementId = ref(null);
-const editingLibraryId = ref(null);
-
-const announcementEditForm = useForm({
-    title: '',
-    content: '',
-    is_pinned: false,
-    published_at: '',
-});
-
-const libraryEditForm = useForm({
-    title: '',
-    description: '',
-    category: 'Umum',
-    pdf_file: null,
-});
-
-function submitAnnouncement() {
-    announcementForm.post(route('admin.hub.announcements.store'), {
-        preserveScroll: true,
-        onSuccess: () => announcementForm.reset('title', 'content', 'is_pinned', 'published_at'),
-    });
-}
-
-function submitLibrary() {
-    libraryForm.post(route('admin.hub.library.store'), {
-        preserveScroll: true,
-        forceFormData: true,
-        onSuccess: () => libraryForm.reset('title', 'description', 'category', 'pdf_file'),
-    });
-}
-
-function onPdfSelected(event) {
-    libraryForm.pdf_file = event.target.files[0];
-}
-
-function toDateTimeLocal(value) {
-    if (!value) return '';
-    return value.replace(' ', 'T').slice(0, 16);
-}
-
-function startEditAnnouncement(item) {
-    editingAnnouncementId.value = item.id;
-    announcementEditForm.title = item.title ?? '';
-    announcementEditForm.content = item.content ?? '';
-    announcementEditForm.is_pinned = !!item.is_pinned;
-    announcementEditForm.published_at = toDateTimeLocal(item.published_at);
-}
-
-function cancelEditAnnouncement() {
-    editingAnnouncementId.value = null;
-    announcementEditForm.reset();
-}
-
-function submitEditAnnouncement(item) {
-    announcementEditForm.put(route('admin.hub.announcements.update', item.id), {
-        preserveScroll: true,
-        onSuccess: () => cancelEditAnnouncement(),
-    });
-}
-
-function startEditLibrary(item) {
-    editingLibraryId.value = item.id;
-    libraryEditForm.title = item.title ?? '';
-    libraryEditForm.description = item.description ?? '';
-    libraryEditForm.category = item.category ?? 'Umum';
-    libraryEditForm.pdf_file = null;
-}
-
-function cancelEditLibrary() {
-    editingLibraryId.value = null;
-    libraryEditForm.reset();
-}
-
-function onEditPdfSelected(event) {
-    libraryEditForm.pdf_file = event.target.files[0];
-}
-
-function submitEditLibrary(item) {
-    libraryEditForm.put(route('admin.hub.library.update', item.id), {
-        preserveScroll: true,
-        forceFormData: true,
-        onSuccess: () => cancelEditLibrary(),
-    });
-}
-
-function removeAnnouncement(id) {
-    if (!confirm('Padam pengumuman ini?')) return;
-    useForm({}).delete(route('admin.hub.announcements.destroy', id), { preserveScroll: true });
-}
-
-function togglePinned(id) {
-    useForm({}).patch(route('admin.hub.announcements.pin', id), { preserveScroll: true });
-}
-
-function removeLibraryItem(id) {
-    if (!confirm('Padam dokumen PDF ini?')) return;
-    useForm({}).delete(route('admin.hub.library.destroy', id), { preserveScroll: true });
-}
-
 const inferredOrganization = computed(() => {
     if (!memberForm.dob) return null;
-
     const dob = new Date(memberForm.dob);
     if (Number.isNaN(dob.getTime())) return null;
 
     const today = new Date();
     let age = today.getFullYear() - dob.getFullYear();
-    const hasBirthdayPassed =
-        today.getMonth() > dob.getMonth()
-        || (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
-
-    if (!hasBirthdayPassed) {
-        age -= 1;
-    }
+    const hasBirthdayPassed = today.getMonth() > dob.getMonth() || (today.getMonth() === dob.getMonth() && today.getDate() >= dob.getDate());
+    if (!hasBirthdayPassed) age -= 1;
 
     return props.organizations.find((organization) => {
         const minAge = Number(organization.min_age ?? 0);
         const maxAge = organization.max_age === null ? null : Number(organization.max_age);
-
         if (Number.isNaN(minAge)) return false;
         if (maxAge !== null && Number.isNaN(maxAge)) return false;
-
         return age >= minAge && (maxAge === null || age <= maxAge);
     }) ?? null;
 });
@@ -181,272 +68,235 @@ function submitMember() {
         },
     });
 }
+
+// ─── Filters & Search ────────────────────────────────────────────────────────
+
+const searchQuery = ref(props.filters?.search ?? '');
+const organizationIdFilter = ref(props.filters?.organization_id ?? '');
+const roleFilter = ref(props.filters?.role ?? '');
+
+watch([searchQuery, organizationIdFilter, roleFilter], customDebounce(([newSearch, newOrg, newRole]) => {
+    router.get(
+        route('admin.hub.manage'),
+        { search: newSearch, organization_id: newOrg, role: newRole },
+        { preserveState: true, preserveScroll: true, replace: true }
+    );
+}, 300));
+
+// ─── Update Role ─────────────────────────────────────────────────────────────
+
+const updatingUserId = ref(null);
+
+function updateRole(userId, newRole) {
+    if (!confirm(`Sahkan penukaran peranan kepada ${newRole}?`)) return;
+    updatingUserId.value = userId;
+
+    router.patch(route('admin.hub.members.role.update', userId), { role: newRole }, {
+        preserveScroll: true,
+        onFinish: () => { updatingUserId.value = null; }
+    });
+}
 </script>
 
 <template>
-    <Head title="Information Hub Management" />
+    <Head title="Pengurusan Ahli" />
 
     <AppLayout>
-        <template #header>Information Hub Management</template>
+        <template #header>Pengurusan Ahli</template>
 
-        <div class="mx-auto max-w-7xl px-4 py-6 md:px-6 space-y-6">
-            <div v-if="$page.props.flash?.success" class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-                {{ $page.props.flash.success }}
+        <div class="mx-auto max-w-7xl px-4 py-6 md:px-6 space-y-8">
+            <div v-if="$page.props.flash?.success" class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 shadow-sm transition-all duration-300">
+                <span class="flex items-center gap-2">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    {{ $page.props.flash.success }}
+                </span>
             </div>
 
-            <section v-if="isSuperadmin" class="rounded-3xl border border-gray-100 bg-white/90 p-5 shadow-sm">
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h2 class="text-lg font-black text-gray-800">Members</h2>
-                        <p class="mt-1 text-sm text-gray-500">Tambah ahli baharu secara manual.</p>
-                    </div>
-                    <button
-                        type="button"
-                        @click="showMemberForm = !showMemberForm"
-                        class="rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800"
-                    >
-                        {{ showMemberForm ? 'Tutup Borang' : 'Add Member' }}
-                    </button>
+            <!-- Page Header -->
+            <div class="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div>
+                    <h2 class="text-3xl font-black tracking-tight text-gray-900">Senarai Ahli & Pengguna</h2>
+                    <p class="text-sm font-medium text-gray-500 mt-1">Urus keahlian, organisasi, dan peranan sistem.</p>
                 </div>
+                <button
+                    v-if="isSuperadmin"
+                    @click="showMemberForm = !showMemberForm"
+                    class="inline-flex items-center gap-2 rounded-2xl bg-gray-900 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-gray-800 transition-all hover:-translate-y-0.5"
+                >
+                    <svg v-if="!showMemberForm" xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
+                    <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    {{ showMemberForm ? 'Tutup Borang' : 'Tambah Ahli Baharu' }}
+                </button>
+            </div>
 
-                <form v-if="showMemberForm" class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2" @submit.prevent="submitMember">
-                    <div>
-                        <label class="mb-1 block text-xs font-semibold text-gray-500">Nama Penuh</label>
-                        <input v-model="memberForm.name" type="text" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0" required>
-                        <p v-if="memberForm.errors.name" class="mt-1 text-xs text-red-600">{{ memberForm.errors.name }}</p>
-                    </div>
-
-                    <div>
-                        <label class="mb-1 block text-xs font-semibold text-gray-500">Email</label>
-                        <input v-model="memberForm.email" type="email" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0" required>
-                        <p v-if="memberForm.errors.email" class="mt-1 text-xs text-red-600">{{ memberForm.errors.email }}</p>
-                    </div>
-
-                    <div>
-                        <label class="mb-1 block text-xs font-semibold text-gray-500">No. Telefon</label>
-                        <input v-model="memberForm.phone" type="text" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0">
-                        <p v-if="memberForm.errors.phone" class="mt-1 text-xs text-red-600">{{ memberForm.errors.phone }}</p>
-                    </div>
-
-                    <div>
-                        <label class="mb-1 block text-xs font-semibold text-gray-500">Tarikh Lahir</label>
-                        <input v-model="memberForm.dob" type="date" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0" required>
-                        <p v-if="memberForm.errors.dob" class="mt-1 text-xs text-red-600">{{ memberForm.errors.dob }}</p>
-                        <p v-if="inferredOrganization" class="mt-1 text-xs font-semibold text-emerald-600">
-                            Organisasi automatik: {{ inferredOrganization.name }}
-                        </p>
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label class="mb-1 block text-xs font-semibold text-gray-500">Password (Opsyenal)</label>
-                        <input v-model="memberForm.password" type="text" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0" placeholder="Kosongkan untuk guna default: password123">
-                        <p v-if="memberForm.errors.password" class="mt-1 text-xs text-red-600">{{ memberForm.errors.password }}</p>
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <button type="submit" :disabled="memberForm.processing" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
-                            {{ memberForm.processing ? 'Menyimpan...' : 'Simpan Ahli' }}
-                        </button>
-                    </div>
-                </form>
-            </section>
-
-            <section class="rounded-3xl border border-gray-100 bg-white/90 p-5 shadow-sm">
-                <div class="mb-4 flex items-center justify-between">
-                    <h2 class="text-lg font-black text-gray-800">Pengumuman</h2>
-                </div>
-
-                <form class="grid grid-cols-1 gap-3 md:grid-cols-2" @submit.prevent="submitAnnouncement">
-                    <div v-if="isSuperadmin" class="md:col-span-1">
-                        <label class="mb-1 block text-xs font-semibold text-gray-500">Organisasi</label>
-                        <select v-model="announcementForm.organization_id" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0">
-                            <option v-for="org in organizations" :key="org.id" :value="org.id">{{ org.name }}</option>
-                        </select>
-                    </div>
-
-                    <div class="md:col-span-1">
-                        <label class="mb-1 block text-xs font-semibold text-gray-500">Tajuk</label>
-                        <input v-model="announcementForm.title" type="text" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0" required>
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label class="mb-1 block text-xs font-semibold text-gray-500">Kandungan</label>
-                        <textarea v-model="announcementForm.content" rows="4" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0" required></textarea>
-                    </div>
-
-                    <div>
-                        <label class="mb-1 block text-xs font-semibold text-gray-500">Tarikh Terbit</label>
-                        <input v-model="announcementForm.published_at" type="datetime-local" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0">
-                    </div>
-
-                    <div class="flex items-center gap-2">
-                        <input id="is_pinned" v-model="announcementForm.is_pinned" type="checkbox" class="rounded border-gray-300 text-amber-500 focus:ring-amber-400">
-                        <label for="is_pinned" class="text-sm text-gray-600">Pin pengumuman ini</label>
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <button type="submit" :disabled="announcementForm.processing" class="rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60">
-                            {{ announcementForm.processing ? 'Menyimpan...' : 'Terbitkan Pengumuman' }}
-                        </button>
-                    </div>
-                </form>
-
-                <div class="mt-5 space-y-3">
-                    <article
-                        v-for="item in announcements"
-                        :key="item.id"
-                        class="rounded-2xl border border-gray-100 bg-white p-4"
-                        :class="item.is_pinned ? 'border-l-4 border-amber-400 bg-amber-50/40' : ''"
-                    >
-                        <template v-if="editingAnnouncementId === item.id">
-                            <form class="space-y-3" @submit.prevent="submitEditAnnouncement(item)">
-                                <div>
-                                    <label class="mb-1 block text-xs font-semibold text-gray-500">Tajuk</label>
-                                    <input v-model="announcementEditForm.title" type="text" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0" required>
-                                </div>
-                                <div>
-                                    <label class="mb-1 block text-xs font-semibold text-gray-500">Kandungan</label>
-                                    <textarea v-model="announcementEditForm.content" rows="4" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0" required></textarea>
-                                </div>
-                                <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                                    <div>
-                                        <label class="mb-1 block text-xs font-semibold text-gray-500">Tarikh Terbit</label>
-                                        <input v-model="announcementEditForm.published_at" type="datetime-local" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0">
-                                    </div>
-                                    <div class="flex items-center gap-2">
-                                        <input id="edit_is_pinned" v-model="announcementEditForm.is_pinned" type="checkbox" class="rounded border-gray-300 text-amber-500 focus:ring-amber-400">
-                                        <label for="edit_is_pinned" class="text-sm text-gray-600">Pin pengumuman ini</label>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <button type="submit" :disabled="announcementEditForm.processing" class="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                                        {{ announcementEditForm.processing ? 'Updating...' : 'Update' }}
-                                    </button>
-                                    <button type="button" @click="cancelEditAnnouncement" class="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700">
-                                        Cancel
-                                    </button>
-                                </div>
-                            </form>
-                        </template>
-                        <div v-else class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
-                                <p class="text-sm font-bold text-gray-800">{{ item.title }}</p>
-                                <p class="mt-1 text-xs text-gray-500">{{ item.organization_name }} • {{ item.published_human || item.published_at || 'Draft' }}</p>
-                                <p class="mt-2 text-sm text-gray-600 whitespace-pre-line">{{ item.content }}</p>
-                            </div>
-                            <div class="flex items-center gap-2 shrink-0">
-                                <button @click="startEditAnnouncement(item)" class="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700">
-                                    Edit
-                                </button>
-                                <button @click="togglePinned(item.id)" class="rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">
-                                    {{ item.is_pinned ? 'Unpin' : 'Pin' }}
-                                </button>
-                                <button @click="removeAnnouncement(item.id)" class="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">
-                                    Delete
-                                </button>
-                            </div>
+            <!-- Add Member Form -->
+            <transition
+                enter-active-class="transition duration-300 ease-out"
+                enter-from-class="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                enter-to-class="opacity-100 translate-y-0 sm:scale-100"
+                leave-active-class="transition duration-200 ease-in"
+                leave-from-class="opacity-100 translate-y-0 sm:scale-100"
+                leave-to-class="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+            >
+                <section v-if="showMemberForm && isSuperadmin" class="relative rounded-3xl border border-gray-100 bg-white p-6 shadow-xl shadow-gray-200/40">
+                    <form class="grid grid-cols-1 gap-4 md:grid-cols-2" @submit.prevent="submitMember">
+                        <div>
+                            <label class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Nama Penuh</label>
+                            <input v-model="memberForm.name" type="text" class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:ring-gray-900 transition-all" required>
+                            <p v-if="memberForm.errors.name" class="mt-1 text-xs text-red-600">{{ memberForm.errors.name }}</p>
                         </div>
-                    </article>
+                        <div>
+                            <label class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Email</label>
+                            <input v-model="memberForm.email" type="email" class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:ring-gray-900 transition-all" required>
+                            <p v-if="memberForm.errors.email" class="mt-1 text-xs text-red-600">{{ memberForm.errors.email }}</p>
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">No. Telefon</label>
+                            <input v-model="memberForm.phone" type="text" class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:ring-gray-900 transition-all">
+                            <p v-if="memberForm.errors.phone" class="mt-1 text-xs text-red-600">{{ memberForm.errors.phone }}</p>
+                        </div>
+                        <div>
+                            <label class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Tarikh Lahir</label>
+                            <input v-model="memberForm.dob" type="date" class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:ring-gray-900 transition-all" required>
+                            <p v-if="memberForm.errors.dob" class="mt-1 text-xs text-red-600">{{ memberForm.errors.dob }}</p>
+                            <p v-if="inferredOrganization" class="mt-1.5 text-xs font-semibold text-emerald-600 flex items-center gap-1">
+                                <svg class="w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+                                Disusun ke: {{ inferredOrganization.name }}
+                            </p>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Password (Opsyenal)</label>
+                            <input v-model="memberForm.password" type="text" class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:ring-gray-900 transition-all" placeholder="Kosongkan untuk katalaluan lalai: password123">
+                            <p v-if="memberForm.errors.password" class="mt-1 text-xs text-red-600">{{ memberForm.errors.password }}</p>
+                        </div>
+                        <div class="md:col-span-2 flex justify-end gap-3 pt-2">
+                            <button type="button" @click="showMemberForm = false" class="rounded-xl border border-gray-200 px-5 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-all">Batal</button>
+                            <button type="submit" :disabled="memberForm.processing" class="rounded-xl bg-emerald-600 px-6 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 shadow-sm transition-all disabled:opacity-60">
+                                {{ memberForm.processing ? 'Menyimpan...' : 'Simpan Ahli' }}
+                            </button>
+                        </div>
+                    </form>
+                </section>
+            </transition>
+
+            <!-- Filters Section -->
+            <div class="flex flex-col md:flex-row gap-3">
+                <div class="relative flex-1">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                        <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                    </div>
+                    <input v-model="searchQuery" type="text" placeholder="Cari nama, email, no telefon..." class="pl-10 w-full rounded-2xl border-gray-200 text-sm focus:border-gray-900 focus:ring-gray-900 shadow-sm transition-colors">
                 </div>
-            </section>
-
-            <section class="rounded-3xl border border-gray-100 bg-white/90 p-5 shadow-sm">
-                <h2 class="text-lg font-black text-gray-800">Pustaka PDF</h2>
-
-                <form class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2" @submit.prevent="submitLibrary">
-                    <div v-if="isSuperadmin" class="md:col-span-1">
-                        <label class="mb-1 block text-xs font-semibold text-gray-500">Organisasi</label>
-                        <select v-model="libraryForm.organization_id" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0">
-                            <option v-for="org in organizations" :key="org.id" :value="org.id">{{ org.name }}</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="mb-1 block text-xs font-semibold text-gray-500">Tajuk PDF</label>
-                        <input v-model="libraryForm.title" type="text" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0" required>
-                    </div>
-
-                    <div>
-                        <label class="mb-1 block text-xs font-semibold text-gray-500">Kategori</label>
-                        <input v-model="libraryForm.category" type="text" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0" placeholder="Umum / SOP / Modul">
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label class="mb-1 block text-xs font-semibold text-gray-500">Deskripsi</label>
-                        <textarea v-model="libraryForm.description" rows="3" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0"></textarea>
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label class="mb-1 block text-xs font-semibold text-gray-500">Fail PDF</label>
-                        <input type="file" accept="application/pdf" @change="onPdfSelected" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-gray-700">
-                        <p class="mt-1 text-xs text-gray-400">Maks 10MB. Simpanan dummy di storage tempatan untuk Phase 1.</p>
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <button type="submit" :disabled="libraryForm.processing" class="rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-60">
-                            {{ libraryForm.processing ? 'Memuat naik...' : 'Muat Naik PDF' }}
-                        </button>
-                    </div>
-                </form>
-
-                <div class="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <article v-for="item in libraryItems" :key="item.id" class="rounded-2xl border border-gray-100 bg-white p-4">
-                        <template v-if="editingLibraryId === item.id">
-                            <form class="space-y-3" @submit.prevent="submitEditLibrary(item)">
-                                <div>
-                                    <label class="mb-1 block text-xs font-semibold text-gray-500">Tajuk PDF</label>
-                                    <input v-model="libraryEditForm.title" type="text" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0" required>
-                                </div>
-                                <div>
-                                    <label class="mb-1 block text-xs font-semibold text-gray-500">Kategori</label>
-                                    <input v-model="libraryEditForm.category" type="text" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0">
-                                </div>
-                                <div>
-                                    <label class="mb-1 block text-xs font-semibold text-gray-500">Deskripsi</label>
-                                    <textarea v-model="libraryEditForm.description" rows="3" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-500 focus:ring-0"></textarea>
-                                </div>
-                                <div>
-                                    <label class="mb-1 block text-xs font-semibold text-gray-500">Ganti PDF (opsyenal)</label>
-                                    <input type="file" accept="application/pdf" @change="onEditPdfSelected" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-gray-700">
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <button type="submit" :disabled="libraryEditForm.processing" class="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                                        {{ libraryEditForm.processing ? 'Updating...' : 'Update' }}
-                                    </button>
-                                    <button type="button" @click="cancelEditLibrary" class="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700">
-                                        Cancel
-                                    </button>
-                                </div>
-                            </form>
-                        </template>
-                        <template v-else>
-                            <div class="flex items-start justify-between gap-2">
-                                <div>
-                                    <p class="text-sm font-bold text-gray-800">{{ item.title }}</p>
-                                    <p class="mt-1 text-xs text-gray-500">{{ item.organization_name }} • {{ item.category || 'Umum' }}</p>
-                                    <p class="mt-2 text-sm text-gray-600">{{ item.description || '—' }}</p>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <button @click="startEditLibrary(item)" class="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700">
-                                        Edit
-                                    </button>
-                                    <button @click="removeLibraryItem(item.id)" class="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700">
-                                        Delete
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="mt-3 flex items-center gap-2">
-                                <a :href="item.file_path" target="_blank" class="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50">
-                                    Read PDF
-                                </a>
-                            </div>
-                        </template>
-                    </article>
+                
+                <div v-if="isSuperadmin" class="relative md:w-48 shrink-0">
+                    <select v-model="organizationIdFilter" class="w-full rounded-2xl border-gray-200 text-sm focus:border-gray-900 focus:ring-gray-900 shadow-sm transition-colors">
+                        <option value="">Semua Organisasi</option>
+                        <option v-for="org in organizations" :key="org.id" :value="org.id">{{ org.name }}</option>
+                    </select>
                 </div>
-            </section>
+                
+                <div class="relative md:w-48 shrink-0">
+                    <select v-model="roleFilter" class="w-full rounded-2xl border-gray-200 text-sm focus:border-gray-900 focus:ring-gray-900 shadow-sm transition-colors">
+                        <option value="">Semua Peranan</option>
+                        <option value="Admin">Admin</option>
+                        <option value="Member">Member / Ahli</option>
+                    </select>
+                </div>
+            </div>
 
+            <!-- Members Table -->
+            <div class="rounded-3xl border border-gray-100 bg-white overflow-hidden shadow-sm">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-gray-600">
+                        <thead class="bg-gray-50/70 border-b border-gray-100 text-xs uppercase tracking-wider text-gray-500">
+                            <tr>
+                                <th scope="col" class="px-6 py-4 font-bold">Pengguna</th>
+                                <th scope="col" class="px-6 py-4 font-bold">Cawangan & Organisasi</th>
+                                <th scope="col" class="px-6 py-4 font-bold">Peranan</th>
+                                <th scope="col" class="px-6 py-4 font-bold">Status</th>
+                                <th scope="col" class="px-6 py-4 font-bold text-right">Tindakan</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 bg-white">
+                            <tr v-if="members.data.length === 0">
+                                <td colspan="5" class="px-6 py-12 text-center text-gray-400">Tiada ahli dijumpai.</td>
+                            </tr>
+                            <tr v-for="member in members.data" :key="member.id" class="hover:bg-gray-50/50 transition-colors">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-9 h-9 shrink-0 flex items-center justify-center rounded-full bg-gray-100 text-gray-600 font-bold border border-gray-200">
+                                            {{ member.name.charAt(0).toUpperCase() }}
+                                        </div>
+                                        <div>
+                                            <div class="font-bold text-gray-900">{{ member.name }}</div>
+                                            <div class="text-xs text-gray-500">{{ member.email }} • {{ member.phone || 'Tiada No.' }}</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center justify-center rounded-lg bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
+                                        {{ member.organization_name }}
+                                    </span>
+                                    <div class="text-[11px] text-gray-400 mt-1 uppercase font-semibold">Caw: {{ member.branch_name }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <select 
+                                        :value="member.role" 
+                                        @change="updateRole(member.id, $event.target.value)"
+                                        :disabled="updatingUserId === member.id || member.role === 'Superadmin'"
+                                        class="h-8 py-0 pl-3 pr-8 rounded-lg text-xs font-bold border-gray-200 focus:border-gray-900 focus:ring-gray-900 transition-colors cursor-pointer disabled:opacity-50"
+                                        :class="{
+                                            'bg-emerald-50 text-emerald-700 border-emerald-200': member.role === 'Admin',
+                                            'bg-blue-50 text-blue-700 border-blue-200': member.role === 'Member' || member.role === 'User',
+                                            'bg-yellow-50 text-yellow-700 border-yellow-200': member.role === 'Superadmin'
+                                        }"
+                                    >
+                                        <option value="Member" class="text-blue-700">Member</option>
+                                        <option value="Admin" class="text-emerald-700">Admin</option>
+                                        <option v-if="member.role === 'Superadmin'" value="Superadmin" disabled>Superadmin</option>
+                                    </select>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span> Aktif
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right">
+                                    <div class="flex items-center justify-end gap-2">
+                                        <button class="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors" title="Lihat Profil">
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div v-if="members.last_page > 1" class="flex justify-center mt-6 pb-6 gap-2">
+                <a
+                    v-for="link in members.links"
+                    :key="link.label"
+                    :href="link.url ?? '#'"
+                    v-html="link.label"
+                    :class="[
+                        'inline-flex items-center justify-center h-10 min-w-10 px-3 rounded-2xl text-sm font-bold transition-all',
+                        link.active
+                            ? 'bg-gray-900 text-white shadow-md'
+                            : link.url
+                                ? 'bg-white border text-gray-600 hover:border-gray-900 shadow-sm'
+                                : 'bg-transparent text-gray-300 pointer-events-none',
+                    ]"
+                />
+            </div>
+
+            <!-- Back navigation (If admin) -->
             <div>
-                <Link :href="route('admin.dashboard')" class="text-sm font-semibold text-gray-500 hover:text-gray-700">← Kembali ke Dashboard Admin</Link>
+                <Link :href="route('admin.dashboard')" class="text-sm font-bold text-gray-500 hover:text-gray-900 transition-colors inline-block pb-6">
+                    ← Kembali ke Dashboard
+                </Link>
             </div>
         </div>
     </AppLayout>

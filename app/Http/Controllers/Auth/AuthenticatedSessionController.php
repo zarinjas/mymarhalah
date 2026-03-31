@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -33,7 +36,38 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $defaultRoute = $this->redirectRouteFor($request->user());
+
+        return redirect()->intended(route($defaultRoute, absolute: false));
+    }
+
+    public function checkMemberIc(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'ic_number' => ['required', 'string', 'max:32'],
+        ]);
+
+        $normalizedIcNumber = Str::upper(preg_replace('/\s+/', '', trim($validated['ic_number'])) ?? '');
+
+        $user = User::query()
+            ->with('organization')
+            ->where('ic_number', $normalizedIcNumber)
+            ->first();
+
+        if (! $user || ! $user->organization) {
+            return response()->json([
+                'found' => false,
+                'message' => 'Maklumat ahli tidak dijumpai.',
+            ], 404);
+        }
+
+        return response()->json([
+            'found' => true,
+            'organization' => [
+                'name' => $user->organization->name,
+                'logo_url' => $user->organization->logo_path,
+            ],
+        ]);
     }
 
     /**
@@ -48,5 +82,22 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/');
+    }
+
+    private function redirectRouteFor(?User $user): string
+    {
+        if (! $user) {
+            return 'dashboard';
+        }
+
+        if ($user->hasRole('Superadmin')) {
+            return 'admin.dashboard';
+        }
+
+        if ($user->hasAnyRole(['Admin', 'org-admin'])) {
+            return 'admin.dashboard';
+        }
+
+        return 'member.dashboard';
     }
 }
