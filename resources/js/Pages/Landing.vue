@@ -108,10 +108,10 @@ const quickLogin = () => {
 
     if (quickLoginRole.value === 'superadmin') {
         form.login_type = 'admin';
-        form.email = 'superadmin@mymarhalah.my';
+        form.email = 'superadmin@mywap.my';
     } else if (quickLoginRole.value === 'admin_pkpim') {
         form.login_type = 'admin';
-        form.email = 'admin@mymarhalah.my';
+        form.email = 'admin@mywap.my';
     } else if (quickLoginRole.value === 'member') {
         form.login_type = 'member';
         form.ic_number = '980512101234';

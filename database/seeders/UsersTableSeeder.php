@@ -23,7 +23,7 @@ class UsersTableSeeder extends Seeder
             array (
                 'id' => 1,
                 'name' => 'Super Admin',
-                'email' => 'superadmin@mymarhalah.my',
+                'email' => 'superadmin@mywap.my',
                 'ic_number' => '700101011111',
                 'email_verified_at' => NULL,
                 'password' => '$2y$12$X44CJ5AGn6ZWzyGoYzMzIeuokQhQHcPpf92Gq31uTh1Cgj0W7WUPO',
@@ -48,7 +48,7 @@ class UsersTableSeeder extends Seeder
             array (
                 'id' => 2,
                 'name' => 'Admin PKPIM',
-                'email' => 'admin@mymarhalah.my',
+                'email' => 'admin@mywap.my',
                 'ic_number' => '800101011111',
                 'email_verified_at' => NULL,
                 'password' => '$2y$12$qJ08S2gjkJtI/Yj6F/Bm3.dpPPxiq/ma1c/Tzs7N/5Fe5/oLupJQS',
@@ -73,7 +73,7 @@ class UsersTableSeeder extends Seeder
             array (
                 'id' => 3,
                 'name' => 'Ahmad Firdaus',
-                'email' => 'member@mymarhalah.my',
+                'email' => 'member@mywap.my',
                 'ic_number' => '980512101234',
                 'email_verified_at' => NULL,
                 'password' => '$2y$12$mF6RivFhPsyO.Pmkeo9owuARg.Gw.rwaMkKrleQ3AB2yu9ItivEti',
@@ -98,7 +98,7 @@ class UsersTableSeeder extends Seeder
             array (
                 'id' => 4,
                 'name' => 'Nurul Izzah',
-                'email' => 'member2@mymarhalah.my',
+                'email' => 'member2@mywap.my',
                 'ic_number' => '070301101234',
                 'email_verified_at' => NULL,
                 'password' => '$2y$12$QiSvE0k7T6v4B5fQDf/rtusdtO57NYOnSnep4lecEYtPpIJmAeStC',

@@ -24,7 +24,7 @@ class AdminUserSeeder extends Seeder
 
         /** @var User $superadmin */
         $superadmin = User::withoutGlobalScopes()->updateOrCreate(
-            ['email' => 'superadmin@mymarhalah.my'],
+            ['email' => 'superadmin@mywap.my'],
             [
                 'name'                    => 'Super Admin',
                 'password'                => Hash::make('password'),
@@ -36,6 +36,6 @@ class AdminUserSeeder extends Seeder
 
         $superadmin->assignRole('Superadmin');
 
-        $this->command->info('✅  Superadmin seeded: superadmin@mymarhalah.my / password');
+        $this->command->info('✅  Superadmin seeded: superadmin@mywap.my / password');
     }
 }
