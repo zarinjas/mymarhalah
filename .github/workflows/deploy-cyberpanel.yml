@@ -92,9 +92,10 @@ jobs:
             find database storage -type f -exec chmod 664 {} +
             chmod 666 database/database.sqlite
 
-            # Kosongkan folder build lama untuk terima fail baru
-            rm -rf public/build
-            mkdir -p public/build
+            # Kosongkan folder build lama dengan lebih selamat
+            # Kita tidak padam seluruh folder supaya tidak mengganggu proses symlink
+            rm -rf public/build/*
+            mkdir -p public/build/
 
       - name: 🚀 Upload built assets to VPS (SCP)
         uses: appleboy/scp-action@v0.1.7
@@ -103,7 +104,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
-          source: "public/build/*"
+          source: "public/build/**/*"
           target: "${{ secrets.VPS_APP_PATH }}/public/build"
           strip_components: 2
 
