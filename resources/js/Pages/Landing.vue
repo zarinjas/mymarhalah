@@ -98,6 +98,8 @@ const submit = () => {
     });
 };
 
+const quickLoginRole = ref('');
+
 const quickLogin = async () => {
     if (!quickLoginRole.value || form.processing) return;
     
@@ -118,6 +120,7 @@ const quickLogin = async () => {
         state.value = 'ahli_flow';
         form.login_type = 'member';
         form.ic_number = '980512101234';
+        ahliStep.value = 2; // Lompat ke step password terus
     }
     
     // Beri sedikit masa untuk UI update state sebelum submit
