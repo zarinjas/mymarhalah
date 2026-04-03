@@ -1,6 +1,7 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import SocialShareButtons from '@/Components/SocialShareButtons.vue';
 
 const props = defineProps({
     post: { type: Object, required: true },
@@ -52,6 +53,15 @@ function submitComment() {
 
                     <h1 class="text-2xl font-black text-gray-900">{{ post.title }}</h1>
                     <p v-if="post.excerpt" class="mt-2 text-gray-600">{{ post.excerpt }}</p>
+
+                    <div class="mt-4">
+                        <p class="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">Sebarkan Info Ini</p>
+                        <SocialShareButtons
+                            :title="post.title"
+                            :text="post.excerpt || 'Baca info terkini ini.'"
+                            :url="route('share.info', post.id, true)"
+                        />
+                    </div>
 
                     <div class="prose mt-5 max-w-none text-gray-700 whitespace-pre-line">{{ post.content }}</div>
 

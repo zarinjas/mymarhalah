@@ -1,6 +1,7 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import SocialShareButtons from '@/Components/SocialShareButtons.vue';
 
 const props = defineProps({
     infaq: {
@@ -62,6 +63,15 @@ function donate() {
                         </div>
 
                         <p class="text-sm leading-relaxed text-gray-600">{{ infaq.description || 'Tiada deskripsi.' }}</p>
+
+                        <div class="mt-4">
+                            <p class="mb-2 text-xs font-bold uppercase tracking-wide text-gray-500">Sebarkan Kempen Ini</p>
+                        <SocialShareButtons
+                                :title="infaq.title"
+                                :text="infaq.description || 'Sertai kempen infaq ini.'"
+                                :url="route('share.infaq', infaq.id, true)"
+                            />
+                        </div>
 
                         <div class="mt-4 rounded-2xl bg-gray-50 p-4">
                             <template v-if="infaq.type === 'progress'">

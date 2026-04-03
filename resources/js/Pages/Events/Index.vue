@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue';
 import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import SocialShareButtons from '@/Components/SocialShareButtons.vue';
 
 // ─── Props ──────────────────────────────────────────────────────────────────
 
@@ -68,6 +69,10 @@ function submitRsvp(status) {
             onError: () => { submitting.value = false; },
         }
     );
+}
+
+function eventShareUrl(event) {
+    return route('share.event', event?.id, true);
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -607,6 +612,16 @@ watch([searchQuery, typeFilter], customDebounce(([newSearch, newType]) => {
                                         </svg>
                                         {{ selectedEvent.rsvp_count }} ahli akan hadir
                                     </p>
+                                </div>
+
+                                <div class="pt-1">
+                                    <p class="mb-2 text-xs font-semibold text-gray-500">Kongsi Program</p>
+                                    <SocialShareButtons
+                                        compact
+                                        :title="selectedEvent.title"
+                                        :text="selectedEvent.organization?.name || 'Program komuniti'"
+                                        :url="eventShareUrl(selectedEvent)"
+                                    />
                                 </div>
 
                                 <!-- Current RSVP status -->

@@ -17,12 +17,16 @@ use App\Http\Controllers\NewsController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\SharePreviewController;
 use App\Http\Controllers\SuperadminOrganizationController;
 use App\Http\Controllers\SuperadminSystemSettingController;
 use App\Http\Controllers\UsrahController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [DashboardController::class, 'landing'])->name('landing');
+Route::get('/share/info/{newsPost}', [SharePreviewController::class, 'info'])->name('share.info');
+Route::get('/share/infaq/{infaq}', [SharePreviewController::class, 'infaq'])->name('share.infaq');
+Route::get('/share/event/{event}', [SharePreviewController::class, 'event'])->name('share.event');
 
 Route::middleware(['auth', 'verified', 'profile_complete'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'dashboardRedirect'])->name('dashboard');
