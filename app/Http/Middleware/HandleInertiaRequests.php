@@ -53,6 +53,7 @@ class HandleInertiaRequests extends Middleware
                     'id'    => $user->id,
                     'name'  => $user->name,
                     'email' => $user->email,
+                    'ic_number' => $user->ic_number,
                     'phone' => $user->phone,
                     'dob'   => $user->dob?->format('Y-m-d'),
                     'education_level' => $user->education_level,

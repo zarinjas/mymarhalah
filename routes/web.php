@@ -13,6 +13,7 @@ use App\Http\Controllers\InformationHubController;
 use App\Http\Controllers\InformationHubAdminController;
 use App\Http\Controllers\MemberDashboardController;
 use App\Http\Controllers\MemberCardController;
+use App\Http\Controllers\NewsController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
@@ -33,6 +34,7 @@ Route::middleware(['auth', 'verified', 'profile_complete'])->group(function () {
         Route::post('/admin/campaigns', [FinancialController::class, 'storeCampaign'])->name('admin.campaigns.store');
         Route::get('/admin/information-hub/manage', [InformationHubAdminController::class, 'index'])->name('admin.hub.manage');
         Route::patch('/admin/information-hub/members/{user}/role', [InformationHubAdminController::class, 'updateRole'])->name('admin.hub.members.role.update');
+        Route::patch('/admin/information-hub/members/{user}/ic-number', [InformationHubAdminController::class, 'updateIcNumber'])->name('admin.hub.members.ic.update');
         Route::post('/admin/information-hub/announcements', [InformationHubAdminController::class, 'storeAnnouncement'])->name('admin.hub.announcements.store');
         Route::put('/admin/information-hub/announcements/{announcement}', [InformationHubAdminController::class, 'updateAnnouncement'])->name('admin.hub.announcements.update');
         Route::patch('/admin/information-hub/announcements/{announcement}/pin', [InformationHubAdminController::class, 'togglePinned'])->name('admin.hub.announcements.pin');
@@ -55,6 +57,11 @@ Route::middleware(['auth', 'verified', 'profile_complete'])->group(function () {
         Route::delete('/admin/facilities/{facility}', [FacilityBookingController::class, 'destroyFacility'])->name('admin.facilities.destroy');
         Route::get('/admin/facility-bookings', [FacilityBookingController::class, 'adminIndex'])->name('admin.facility-bookings.index');
         Route::patch('/admin/facility-bookings/{facilityBooking}', [FacilityBookingController::class, 'updateStatus'])->name('admin.facility-bookings.update');
+        Route::get('/admin/info-terkini/manage', [NewsController::class, 'manage'])->name('admin.news.manage');
+        Route::post('/admin/info-terkini', [NewsController::class, 'store'])->name('admin.news.store');
+        Route::put('/admin/info-terkini/{newsPost}', [NewsController::class, 'update'])->name('admin.news.update');
+        Route::delete('/admin/info-terkini/{newsPost}', [NewsController::class, 'destroy'])->name('admin.news.destroy');
+        Route::post('/admin/info-terkini/categories', [NewsController::class, 'storeCategory'])->name('admin.news.categories.store');
     });
 
     // Superadmin-only: fee management + all transactions
@@ -104,6 +111,10 @@ Route::middleware(['auth', 'verified', 'profile_complete'])->group(function () {
     });
 
     Route::get('/directory', [DirectoryController::class, 'index'])->name('directory.index');
+    Route::get('/info-terkini', [NewsController::class, 'index'])->name('news.index');
+    Route::get('/info-terkini/{newsPost}', [NewsController::class, 'show'])->name('news.show');
+    Route::post('/info-terkini/{newsPost}/react', [NewsController::class, 'react'])->name('news.react');
+    Route::post('/info-terkini/{newsPost}/comments', [NewsController::class, 'storeComment'])->name('news.comments.store');
 
     // ─── E-Commerce Routes (Inertia, inside dashboard) ───────────────────────
     // Member access: browse products + create/view own orders

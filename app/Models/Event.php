@@ -13,10 +13,11 @@ use Illuminate\Support\Str;
 /**
  * Event
  *
- * Represents a programme belonging to one NGO tier.
+ * Represents a programme belonging to one NGO tier, or global (Semua) when
+ * organization_id is null.
  *
  * @property int              $id
- * @property int              $organization_id
+ * @property int|null         $organization_id
  * @property string           $title
  * @property string           $slug
  * @property string|null      $description

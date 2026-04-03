@@ -35,6 +35,7 @@ const showMemberForm = ref(false);
 const memberForm = useForm({
     name: '',
     email: '',
+    ic_number: '',
     phone: '',
     dob: '',
     password: '',
@@ -86,6 +87,11 @@ watch([searchQuery, organizationIdFilter, roleFilter], customDebounce(([newSearc
 // ─── Update Role ─────────────────────────────────────────────────────────────
 
 const updatingUserId = ref(null);
+const showIcModal = ref(false);
+const icTargetMember = ref(null);
+const icForm = useForm({
+    ic_number: '',
+});
 
 function updateRole(userId, newRole) {
     if (!confirm(`Sahkan penukaran peranan kepada ${newRole}?`)) return;
@@ -94,6 +100,35 @@ function updateRole(userId, newRole) {
     router.patch(route('admin.hub.members.role.update', userId), { role: newRole }, {
         preserveScroll: true,
         onFinish: () => { updatingUserId.value = null; }
+    });
+}
+
+function maskedPreviewToRaw(masked) {
+    if (!masked) return '';
+    return String(masked).replace(/\*/g, '');
+}
+
+function openIcModal(member) {
+    icTargetMember.value = member;
+    icForm.reset();
+    icForm.clearErrors();
+    icForm.ic_number = maskedPreviewToRaw(member.ic_number);
+    showIcModal.value = true;
+}
+
+function closeIcModal() {
+    showIcModal.value = false;
+    icTargetMember.value = null;
+    icForm.reset();
+    icForm.clearErrors();
+}
+
+function submitIcNumberUpdate() {
+    if (!icTargetMember.value) return;
+
+    icForm.patch(route('admin.hub.members.ic.update', icTargetMember.value.id), {
+        preserveScroll: true,
+        onSuccess: () => closeIcModal(),
     });
 }
 </script>
@@ -156,6 +191,11 @@ function updateRole(userId, newRole) {
                             <p v-if="memberForm.errors.phone" class="mt-1 text-xs text-red-600">{{ memberForm.errors.phone }}</p>
                         </div>
                         <div>
+                            <label class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">No IC / Passport</label>
+                            <input v-model="memberForm.ic_number" type="text" class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:ring-gray-900 transition-all" required>
+                            <p v-if="memberForm.errors.ic_number" class="mt-1 text-xs text-red-600">{{ memberForm.errors.ic_number }}</p>
+                        </div>
+                        <div>
                             <label class="mb-1.5 block text-xs font-bold uppercase tracking-wide text-gray-500">Tarikh Lahir</label>
                             <input v-model="memberForm.dob" type="date" class="w-full rounded-xl border border-gray-200 px-4 py-2.5 text-sm focus:border-gray-900 focus:ring-gray-900 transition-all" required>
                             <p v-if="memberForm.errors.dob" class="mt-1 text-xs text-red-600">{{ memberForm.errors.dob }}</p>
@@ -185,7 +225,7 @@ function updateRole(userId, newRole) {
                     <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
                         <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </div>
-                    <input v-model="searchQuery" type="text" placeholder="Cari nama, email, no telefon..." class="pl-10 w-full rounded-2xl border-gray-200 text-sm focus:border-gray-900 focus:ring-gray-900 shadow-sm transition-colors">
+                    <input v-model="searchQuery" type="text" placeholder="Cari nama, email, IC/passport, no telefon..." class="pl-10 w-full rounded-2xl border-gray-200 text-sm focus:border-gray-900 focus:ring-gray-900 shadow-sm transition-colors">
                 </div>
                 
                 <div v-if="isSuperadmin" class="relative md:w-48 shrink-0">
@@ -230,6 +270,7 @@ function updateRole(userId, newRole) {
                                         <div>
                                             <div class="font-bold text-gray-900">{{ member.name }}</div>
                                             <div class="text-xs text-gray-500">{{ member.email }} • {{ member.phone || 'Tiada No.' }}</div>
+                                            <div class="text-[11px] font-semibold text-gray-400">IC/Passport: {{ member.ic_number || '-' }}</div>
                                         </div>
                                     </div>
                                 </td>
@@ -263,6 +304,14 @@ function updateRole(userId, newRole) {
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-right">
                                     <div class="flex items-center justify-end gap-2">
+                                        <button
+                                            v-if="isSuperadmin"
+                                            @click="openIcModal(member)"
+                                            class="rounded-lg border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 transition-colors"
+                                            title="Kemas kini No IC / Passport"
+                                        >
+                                            Update IC
+                                        </button>
                                         <button class="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors" title="Lihat Profil">
                                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                                         </button>
@@ -298,6 +347,62 @@ function updateRole(userId, newRole) {
                     ← Kembali ke Dashboard
                 </Link>
             </div>
+
+            <Teleport to="body">
+                <Transition
+                    enter-active-class="transition ease-out duration-200"
+                    enter-from-class="opacity-0"
+                    enter-to-class="opacity-100"
+                    leave-active-class="transition ease-in duration-150"
+                    leave-from-class="opacity-100"
+                    leave-to-class="opacity-0"
+                >
+                    <div
+                        v-if="showIcModal"
+                        class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 p-4 backdrop-blur-sm"
+                        @click.self="closeIcModal"
+                    >
+                        <div class="w-full max-w-md rounded-2xl border border-gray-100 bg-white p-5 shadow-2xl">
+                            <div class="mb-4">
+                                <h3 class="text-lg font-black text-gray-900">Kemas Kini No IC / Passport</h3>
+                                <p class="mt-1 text-sm text-gray-500">
+                                    Pengguna: <span class="font-semibold text-gray-700">{{ icTargetMember?.name || '-' }}</span>
+                                </p>
+                            </div>
+
+                            <form class="space-y-3" @submit.prevent="submitIcNumberUpdate">
+                                <div>
+                                    <label class="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">No IC / Passport Baharu</label>
+                                    <input
+                                        v-model="icForm.ic_number"
+                                        type="text"
+                                        class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm focus:border-gray-900 focus:ring-gray-900"
+                                        required
+                                    >
+                                    <p v-if="icForm.errors.ic_number" class="mt-1 text-xs text-red-600">{{ icForm.errors.ic_number }}</p>
+                                </div>
+
+                                <div class="flex justify-end gap-2 pt-2">
+                                    <button
+                                        type="button"
+                                        @click="closeIcModal"
+                                        class="rounded-xl border border-gray-200 px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                                    >
+                                        Batal
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        :disabled="icForm.processing"
+                                        class="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                                    >
+                                        {{ icForm.processing ? 'Menyimpan...' : 'Simpan IC' }}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </Transition>
+            </Teleport>
         </div>
     </AppLayout>
 </template>

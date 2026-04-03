@@ -18,6 +18,7 @@ const props = defineProps({
 const form = useForm({
     name: '',
     email: '',
+    ic_number: '',
     phone: '',
     dob: '',
     password: '',
@@ -115,6 +116,18 @@ const inferredOrganization = computed(() => {
                         </div>
 
                         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                            <div>
+                                <InputLabel for="ic_number" value="No IC / Passport" class="!text-slate-200" />
+                                <TextInput
+                                    id="ic_number"
+                                    type="text"
+                                    class="mt-1 block w-full border-white/15 bg-white/10 text-white placeholder:text-slate-300/80 focus:border-cyan-300 focus:ring-cyan-300"
+                                    v-model="form.ic_number"
+                                    placeholder="Contoh: 980512101234 / A1234567"
+                                />
+                                <InputError class="mt-2" :message="form.errors.ic_number" />
+                            </div>
+
                             <div>
                                 <InputLabel for="phone" value="No. Telefon" class="!text-slate-200" />
                                 <TextInput

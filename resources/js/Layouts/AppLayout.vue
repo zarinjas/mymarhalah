@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, reactive } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import PwaInstallPrompt from '@/Components/PwaInstallPrompt.vue';
@@ -10,6 +10,15 @@ const page = usePage();
 const auth = computed(() => page.props.auth);
 const user = computed(() => auth.value?.user);
 const org  = computed(() => user.value?.organization);
+const currentUrl = computed(() => page.url ?? '');
+
+function queryParam(key) {
+    const query = currentUrl.value.includes('?')
+        ? currentUrl.value.split('?')[1]
+        : '';
+
+    return new URLSearchParams(query).get(key);
+}
 
 /**
  * Dynamic theming: each NGO slug maps to a set of Tailwind utility classes.
@@ -61,7 +70,11 @@ const sidebarOpen      = ref(true);
 const profileMenuOpen  = ref(false);
 const notifMenuOpen    = ref(false);
 const mobileMenuOpen   = ref(false);
-const ecommerceOpen    = ref(true);
+const groupOpenState   = reactive({
+    ecommerce: true,
+    facilities: true,
+    adminFacilities: true,
+});
 
 // ─── Role helpers ───────────────────────────────────────────────────────────
 
@@ -125,6 +138,58 @@ const ecommerceChildren = computed(() => {
 });
 
 const ecommerceActive = computed(() => ecommerceChildren.value.some((c) => c.active));
+const memberFacilityChildren = computed(() => {
+    if (isMember.value && !isAdmin.value && !isSuperadmin.value) {
+        return [
+            {
+                label: 'Tempahan Ruang',
+                href: route('member.facilities.index'),
+                active: route().current('member.facilities.*') && queryParam('view') !== 'history',
+                icon: `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M5 7v13h14V7M9 7V4h6v3M9 13h6"/></svg>`,
+            },
+            {
+                label: 'Sejarah Tempahan',
+                href: route('member.facilities.index', { view: 'history' }),
+                active: route().current('member.facilities.index') && queryParam('view') === 'history',
+                icon: `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l2.5 2.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`,
+            },
+        ];
+    }
+
+    return [];
+});
+const facilitiesActive = computed(() => memberFacilityChildren.value.some((c) => c.active));
+const adminFacilityChildren = computed(() => {
+    if (isAdmin.value || isSuperadmin.value) {
+        return [
+            {
+                label: 'Urus Ruang',
+                href: route('admin.facilities.manage'),
+                active: route().current('admin.facilities.*'),
+                icon: `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M5 7v13h14V7M9 7V4h6v3M9 13h6"/></svg>`,
+            },
+            {
+                label: 'Senarai Tempahan',
+                href: route('admin.facility-bookings.index'),
+                active: route().current('admin.facility-bookings.*'),
+                icon: `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>`,
+            },
+        ];
+    }
+
+    return [];
+});
+const adminFacilitiesActive = computed(() => adminFacilityChildren.value.some((c) => c.active));
+
+function toggleGroup(groupKey) {
+    if (!groupKey) return;
+    groupOpenState[groupKey] = !groupOpenState[groupKey];
+}
+
+function isGroupOpen(groupKey) {
+    if (!groupKey) return false;
+    return !!groupOpenState[groupKey];
+}
 
 const navItems = computed(() => [
     {
@@ -143,20 +208,20 @@ const navItems = computed(() => [
                  <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
                </svg>`,
     },
+    {
+        label:  'Info Terkini',
+        href:   isAdmin.value || isSuperadmin.value ? route('admin.news.manage') : route('news.index'),
+        active: route().current('news.*') || route().current('admin.news.*'),
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
+                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 21H9a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v14a2 2 0 01-2 2zM7 7H5a2 2 0 00-2 2v10a2 2 0 002 2h2M12 7h5M12 11h5M12 15h5"/>
+               </svg>`,
+    },
         ...(isAdmin.value || isSuperadmin.value ? [{
                 label:  'Members',
                 href:   route('admin.hub.manage'),
                 active: route().current('admin.hub.*'),
                 icon: `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
                                  <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
-                             </svg>`,
-        }] : []),
-        ...(isAdmin.value || isSuperadmin.value ? [{
-                label:  'Facilities',
-                href:   route('admin.facilities.manage'),
-                active: route().current('admin.facilities.*') || route().current('admin.facility-bookings.*'),
-                icon: `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75">
-                                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M5 7v13h14V7M9 7V4h6v3M9 13h6"/>
                              </svg>`,
         }] : []),
         ...(isAdmin.value || isSuperadmin.value ? [{
@@ -248,9 +313,26 @@ const navItems = computed(() => [
     ...(ecommerceChildren.value.length ? [{
         type: 'group',
         label: 'Ecommerce',
+        groupKey: 'ecommerce',
         active: ecommerceActive.value,
         icon: `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.5 7H19M7 13l-2-8m5 15a1 1 0 100-2 1 1 0 000 2zm10 0a1 1 0 100-2 1 1 0 000 2z"/></svg>`,
         children: ecommerceChildren.value,
+    }] : []),
+    ...(adminFacilityChildren.value.length ? [{
+        type: 'group',
+        label: 'Facilities',
+        groupKey: 'adminFacilities',
+        active: adminFacilitiesActive.value,
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M5 7v13h14V7M9 7V4h6v3M9 13h6"/></svg>`,
+        children: adminFacilityChildren.value,
+    }] : []),
+    ...(memberFacilityChildren.value.length ? [{
+        type: 'group',
+        label: 'Facilities',
+        groupKey: 'facilities',
+        active: facilitiesActive.value,
+        icon: `<svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.75"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M5 7v13h14V7M9 7V4h6v3M9 13h6"/></svg>`,
+        children: memberFacilityChildren.value,
     }] : []),
     ...(isMember.value ? [{
         label: 'Pengumuman',
@@ -286,9 +368,15 @@ const navItems = computed(() => [
     },
 ]);
 
-// Auto-open Ecommerce group when inside it
+// Auto-open grouped menus when inside them
 if (ecommerceActive.value) {
-    ecommerceOpen.value = true;
+    groupOpenState.ecommerce = true;
+}
+if (adminFacilitiesActive.value) {
+    groupOpenState.adminFacilities = true;
+}
+if (facilitiesActive.value) {
+    groupOpenState.facilities = true;
 }
 
 // Bottom nav items (mobile) — keep concise: 4 items max
@@ -337,7 +425,7 @@ const bottomNavItems = computed(() => [
                     <button
                         v-if="item.type === 'group'"
                         type="button"
-                        @click="ecommerceOpen = !ecommerceOpen"
+                        @click="toggleGroup(item.groupKey)"
                         :class="[
                             'relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150 text-left',
                             item.active
@@ -354,13 +442,13 @@ const bottomNavItems = computed(() => [
                             <span v-if="sidebarOpen" class="truncate">{{ item.label }}</span>
                         </transition>
                         <span class="ms-auto shrink-0 text-gray-400" v-if="sidebarOpen">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform duration-200" :class="ecommerceOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform duration-200" :class="isGroupOpen(item.groupKey) ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                             </svg>
                         </span>
                     </button>
 
-                    <div v-if="item.type === 'group' && ecommerceOpen && sidebarOpen" class="ml-6 space-y-0.5">
+                    <div v-if="item.type === 'group' && isGroupOpen(item.groupKey) && sidebarOpen" class="ml-6 space-y-0.5">
                         <Link
                             v-for="child in item.children"
                             :key="`${item.label}-${child.label}`"
@@ -631,7 +719,7 @@ const bottomNavItems = computed(() => [
                         <button
                             v-if="item.type === 'group'"
                             type="button"
-                            @click="ecommerceOpen = !ecommerceOpen"
+                            @click="toggleGroup(item.groupKey)"
                             :class="[
                                 'relative w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-150 text-left',
                                 item.active
@@ -646,13 +734,13 @@ const bottomNavItems = computed(() => [
                             <span class="shrink-0" v-html="item.icon" />
                             <span class="truncate">{{ item.label }}</span>
                             <span class="ms-auto shrink-0 text-gray-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform duration-200" :class="ecommerceOpen ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform duration-200" :class="isGroupOpen(item.groupKey) ? 'rotate-180' : ''" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
                                 </svg>
                             </span>
                         </button>
 
-                        <div v-if="item.type === 'group' && ecommerceOpen" class="ml-6 space-y-0.5">
+                        <div v-if="item.type === 'group' && isGroupOpen(item.groupKey)" class="ml-6 space-y-0.5">
                             <Link
                                 v-for="child in item.children"
                                 :key="`${item.label}-${child.label}`"

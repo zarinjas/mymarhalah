@@ -448,9 +448,9 @@ watch([searchQuery, typeFilter], customDebounce(([newSearch, newType]) => {
 
                         <form class="space-y-4 p-5" @submit.prevent="submitCreateProgram">
                             <div v-if="isSuperadmin && organizations.length" class="space-y-1">
-                                <label class="text-xs font-semibold text-gray-500">Organization *</label>
+                                <label class="text-xs font-semibold text-gray-500">Organization</label>
                                 <select v-model="createProgramForm.organization_id" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm">
-                                    <option disabled value="">Pilih organisasi</option>
+                                    <option value="">Semua</option>
                                     <option v-for="org in organizations" :key="org.id" :value="org.id">{{ org.name }}</option>
                                 </select>
                                 <p v-if="createProgramForm.errors.organization_id" class="text-xs text-red-500">{{ createProgramForm.errors.organization_id }}</p>

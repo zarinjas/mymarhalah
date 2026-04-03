@@ -46,6 +46,13 @@ class OrganizationScope implements Scope
             return;
         }
 
+        // We also skip the scope during login requests to prevent "locked-out"
+        // scenarios where an existing session for a different organization
+        // prevents a new user from being found during Auth::attempt().
+        if (request()->is('login*')) {
+            return;
+        }
+
         /** @var \App\Models\User|null $user */
         $user = $guard->user();
 

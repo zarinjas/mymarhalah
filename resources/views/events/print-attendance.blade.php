@@ -192,7 +192,7 @@
             <div>
                 <p style="font-size:10px; font-weight:700; text-transform:uppercase;
                            letter-spacing:.08em; color:#6b7280; margin-bottom:4px;">
-                    {{ $event->organization->name }} &middot; Senarai Kehadiran
+                    {{ $event->organization?->name ?? 'Semua Organisasi' }} &middot; Senarai Kehadiran
                 </p>
                 <h1>{{ $event->title }}</h1>
                 <p class="meta">

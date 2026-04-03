@@ -16,6 +16,10 @@ defineProps({
         type: Array,
         default: () => [],
     },
+    canEditIcNumber: {
+        type: Boolean,
+        default: false,
+    },
 });
 </script>
 
@@ -32,6 +36,7 @@ defineProps({
                         :must-verify-email="mustVerifyEmail"
                         :status="status"
                         :branches="branches"
+                        :can-edit-ic-number="canEditIcNumber"
                     />
                 </section>
 

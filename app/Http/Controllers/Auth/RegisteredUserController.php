@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -36,9 +37,13 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        $normalizedIcNumber = Str::upper(preg_replace('/\s+/', '', trim((string) $request->input('ic_number'))) ?? '');
+        $request->merge(['ic_number' => $normalizedIcNumber]);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'ic_number' => 'required|string|max:32|unique:'.User::class.',ic_number',
             'phone' => 'nullable|string|max:20',
             'dob' => 'required|date',
             'password' => ['required', 'confirmed'],
@@ -51,6 +56,7 @@ class RegisteredUserController extends Controller
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'ic_number' => $normalizedIcNumber,
             'phone' => $request->phone,
             'dob' => $dob,
             'current_organization_id' => $organization?->id,

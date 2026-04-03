@@ -4,6 +4,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
+import { computed } from 'vue';
 
 defineProps({
     mustVerifyEmail: {
@@ -16,14 +17,20 @@ defineProps({
         type: Array,
         default: () => [],
     },
+    canEditIcNumber: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 
 const user = usePage().props.auth.user;
+const isSuperadmin = computed(() => (user?.roles ?? []).includes('Superadmin'));
 
 const form = useForm({
     name: user.name,
     email: user.email,
+    ic_number: user.ic_number ?? '',
     phone: user.phone ?? '',
     dob: user.dob ?? '',
     education_level: user.education_level ?? '',
@@ -104,6 +111,21 @@ function submitProfile() {
                     </div>
 
                     <div>
+                        <InputLabel for="ic_number" value="No IC / Passport" />
+                        <TextInput
+                            id="ic_number"
+                            type="text"
+                            class="mt-1 block w-full"
+                            v-model="form.ic_number"
+                            :readonly="!canEditIcNumber"
+                        />
+                        <p v-if="!canEditIcNumber" class="mt-1 text-xs text-gray-400">
+                            Untuk keselamatan, kemas kini No IC/Passport perlu dibuat oleh admin.
+                        </p>
+                        <InputError class="mt-2" :message="form.errors.ic_number" />
+                    </div>
+
+                    <div>
                         <InputLabel for="phone" value="Telefon" />
                         <TextInput id="phone" type="text" class="mt-1 block w-full" v-model="form.phone" autocomplete="tel" />
                         <InputError class="mt-2" :message="form.errors.phone" />
@@ -117,7 +139,7 @@ function submitProfile() {
                 </div>
             </div>
 
-            <div class="rounded-2xl border border-gray-100 bg-gray-50/60 p-4 md:p-5">
+            <div v-if="!isSuperadmin" class="rounded-2xl border border-gray-100 bg-gray-50/60 p-4 md:p-5">
                 <p class="text-xs font-bold uppercase tracking-[0.12em] text-gray-500">Kerjaya & Kepakaran</p>
                 <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
@@ -152,7 +174,7 @@ function submitProfile() {
                 </div>
             </div>
 
-            <div class="rounded-2xl border border-gray-100 bg-gray-50/60 p-4 md:p-5">
+            <div v-if="!isSuperadmin" class="rounded-2xl border border-gray-100 bg-gray-50/60 p-4 md:p-5">
                 <p class="text-xs font-bold uppercase tracking-[0.12em] text-gray-500">Komuniti</p>
                 <div class="mt-3 grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>
@@ -188,14 +210,18 @@ function submitProfile() {
                     <InputError class="mt-2" :message="form.errors.profile_photo" />
                 </div>
 
-                <label for="is_public_in_directory" class="flex items-start gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 cursor-pointer">
+                <label
+                    v-if="!isSuperadmin"
+                    for="is_public_in_directory"
+                    class="flex items-start gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 cursor-pointer"
+                >
                     <input id="is_public_in_directory" v-model="form.is_public_in_directory" type="checkbox" class="mt-0.5 rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" />
                     <div>
                         <p class="text-sm font-semibold text-gray-700">Papar profil saya dalam direktori networking</p>
                         <p class="text-xs text-gray-500">Ahli lain boleh mencari dan berhubung berdasarkan kepakaran anda.</p>
                     </div>
                 </label>
-                <InputError class="mt-2" :message="form.errors.is_public_in_directory" />
+                <InputError v-if="!isSuperadmin" class="mt-2" :message="form.errors.is_public_in_directory" />
             </div>
 
             <div v-if="mustVerifyEmail && user.email_verified_at === null">

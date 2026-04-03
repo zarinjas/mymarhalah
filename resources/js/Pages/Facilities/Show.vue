@@ -11,6 +11,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    myBookings: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const form = useForm({
@@ -41,6 +45,7 @@ function submitBooking() {
                 <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Butiran Ruang</p>
                 <h1 class="mt-1 text-2xl font-black text-gray-900">{{ facility.name }}</h1>
                 <p class="mt-2 text-sm text-gray-600">{{ facility.description || '—' }}</p>
+                <p class="mt-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Organisasi: {{ facility.organization_name || '-' }}</p>
 
                 <div class="mt-4 grid grid-cols-2 gap-3 text-sm text-gray-600 md:grid-cols-4">
                     <p>Lokasi: <span class="font-semibold text-gray-800">{{ facility.location || '—' }}</span></p>
@@ -73,11 +78,11 @@ function submitBooking() {
 
             <section class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
                 <h2 class="text-lg font-black text-gray-900">Slot Sedia Ada (Pending/Approved)</h2>
+                <p class="mt-1 text-xs text-gray-500">Paparan slot umum untuk elak pertindihan masa tempahan.</p>
                 <div class="mt-4 overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead>
                             <tr class="border-b border-gray-100 text-left text-xs uppercase text-gray-500">
-                                <th class="px-2 py-2">Ahli</th>
                                 <th class="px-2 py-2">Mula</th>
                                 <th class="px-2 py-2">Tamat</th>
                                 <th class="px-2 py-2">Status</th>
@@ -85,13 +90,41 @@ function submitBooking() {
                         </thead>
                         <tbody>
                             <tr v-for="booking in bookings" :key="booking.id" class="border-b border-gray-50">
-                                <td class="px-2 py-2">{{ booking.user_name || '-' }}</td>
                                 <td class="px-2 py-2">{{ booking.start_datetime }}</td>
                                 <td class="px-2 py-2">{{ booking.end_datetime }}</td>
                                 <td class="px-2 py-2 font-semibold">{{ booking.booking_status }}</td>
                             </tr>
                             <tr v-if="bookings.length === 0">
-                                <td colspan="4" class="px-2 py-4 text-gray-500">Tiada tempahan lagi.</td>
+                                <td colspan="3" class="px-2 py-4 text-gray-500">Tiada tempahan lagi.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
+                <h2 class="text-lg font-black text-gray-900">Tempahan Saya Untuk Ruang Ini</h2>
+                <div class="mt-4 overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-100 text-left text-xs uppercase text-gray-500">
+                                <th class="px-2 py-2">Mula</th>
+                                <th class="px-2 py-2">Tamat</th>
+                                <th class="px-2 py-2">Harga</th>
+                                <th class="px-2 py-2">Status</th>
+                                <th class="px-2 py-2">Catatan Admin</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="booking in myBookings" :key="booking.id" class="border-b border-gray-50">
+                                <td class="px-2 py-2">{{ booking.start_datetime || '-' }}</td>
+                                <td class="px-2 py-2">{{ booking.end_datetime || '-' }}</td>
+                                <td class="px-2 py-2">RM {{ Number(booking.total_price).toFixed(2) }}</td>
+                                <td class="px-2 py-2 font-semibold">{{ booking.booking_status }}</td>
+                                <td class="px-2 py-2 text-xs text-gray-500">{{ booking.admin_remarks || '—' }}</td>
+                            </tr>
+                            <tr v-if="myBookings.length === 0">
+                                <td colspan="5" class="px-2 py-4 text-gray-500">Belum ada tempahan untuk ruang ini.</td>
                             </tr>
                         </tbody>
                     </table>

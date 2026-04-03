@@ -30,7 +30,10 @@ class EventController extends Controller
 
         // Filter by organization if not superadmin
         if (! $user->hasRole('Superadmin')) {
-            $query->where('organization_id', $user->current_organization_id);
+            $query->where(function ($innerQuery) use ($user) {
+                $innerQuery->where('organization_id', $user->current_organization_id)
+                    ->orWhereNull('organization_id');
+            });
         }
 
         // Filter by date
@@ -88,9 +91,9 @@ class EventController extends Controller
             'featured_image_url'  => $event->featured_image_url,
             'google_calendar_url' => $event->google_calendar_url,
             'organization'        => [
-                'name'        => $event->organization->name,
-                'slug'        => $event->organization->slug,
-                'color_theme' => $event->organization->color_theme,
+                'name'        => $event->organization?->name ?? 'Semua Organisasi',
+                'slug'        => $event->organization?->slug ?? 'semua',
+                'color_theme' => $event->organization?->color_theme ?? '#334155',
             ],
             'rsvp_count' => $event->rsvps->whereIn('status', ['going', 'attended'])->count(),
             'my_rsvp'    => $myRsvp ? $myRsvp->status : null,
@@ -122,7 +125,10 @@ class EventController extends Controller
         }
 
         if (! $user->hasRole('Superadmin')) {
-            $query->where('organization_id', $user->current_organization_id);
+            $query->where(function ($innerQuery) use ($user) {
+                $innerQuery->where('organization_id', $user->current_organization_id)
+                    ->orWhereNull('organization_id');
+            });
         }
 
         if ($search) {
@@ -171,8 +177,8 @@ class EventController extends Controller
                     'id' => $event->id,
                     'title' => $event->title,
                     'organization' => [
-                        'name' => $event->organization->name,
-                        'color_theme' => $event->organization->color_theme,
+                        'name' => $event->organization?->name ?? 'Semua Organisasi',
+                        'color_theme' => $event->organization?->color_theme ?? '#334155',
                     ],
                     'start_formatted' => $event->start_time->locale('ms')->isoFormat('ddd, D MMM YYYY [•] h:mm A'),
                     'location_or_link' => $event->location_or_link,
@@ -203,7 +209,7 @@ class EventController extends Controller
 
         $data = $request->validate([
             'organization_id' => [
-                $isSuperadmin ? 'required' : 'nullable',
+                'nullable',
                 'integer',
                 'exists:organizations,id',
             ],
@@ -223,7 +229,7 @@ class EventController extends Controller
 
         Event::create([
             'organization_id' => $isSuperadmin
-                ? (int) $data['organization_id']
+                ? ($data['organization_id'] ?? null)
                 : (int) $request->user()->current_organization_id,
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
@@ -334,8 +340,8 @@ class EventController extends Controller
                 'location_or_link' => $event->location_or_link,
                 'start_formatted' => $event->start_time->locale('ms')->isoFormat('ddd, D MMM YYYY [•] h:mm A'),
                 'organization'    => [
-                    'name'        => $event->organization->name,
-                    'color_theme' => $event->organization->color_theme,
+                    'name'        => $event->organization?->name ?? 'Semua Organisasi',
+                    'color_theme' => $event->organization?->color_theme ?? '#334155',
                 ],
             ],
             'memberName' => $user->name,

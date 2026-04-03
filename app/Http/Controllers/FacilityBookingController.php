@@ -160,11 +160,12 @@ class FacilityBookingController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
+        $historyStatus = trim((string) $request->query('history_status', ''));
+        $validHistoryStatuses = ['pending', 'approved', 'rejected'];
 
         $facilities = Facility::query()
             ->with('organization:id,name,slug')
             ->where('is_active', true)
-            ->where('organization_id', $user->current_organization_id)
             ->orderBy('name')
             ->get()
             ->map(fn (Facility $facility) => [
@@ -180,35 +181,74 @@ class FacilityBookingController extends Controller
                 'image_path' => $facility->image_path,
             ]);
 
+        $myBookings = FacilityBooking::query()
+            ->with(['facility.organization:id,name,slug'])
+            ->where('user_id', $user->id)
+            ->when(
+                in_array($historyStatus, $validHistoryStatuses, true),
+                fn ($query) => $query->where('booking_status', $historyStatus)
+            )
+            ->orderByDesc('start_datetime')
+            ->limit(20)
+            ->get()
+            ->map(fn (FacilityBooking $booking) => [
+                'id' => $booking->id,
+                'facility_id' => $booking->facility_id,
+                'facility_name' => $booking->facility?->name ?? 'Ruang Dipadam',
+                'organization_name' => $booking->facility?->organization?->name ?? '-',
+                'start_datetime' => $booking->start_datetime?->toDateTimeString(),
+                'end_datetime' => $booking->end_datetime?->toDateTimeString(),
+                'total_price' => (float) $booking->total_price,
+                'booking_status' => $booking->booking_status,
+                'payment_status' => $booking->payment_status,
+                'admin_remarks' => $booking->admin_remarks,
+            ]);
+
         return Inertia::render('Facilities/Index', [
             'facilities' => $facilities,
+            'myBookings' => $myBookings,
+            'historyFilters' => [
+                'status' => in_array($historyStatus, $validHistoryStatuses, true) ? $historyStatus : '',
+            ],
+            'jumpToHistory' => $request->query('view') === 'history',
         ]);
     }
 
     public function show(Request $request, Facility $facility): Response
     {
-        $this->ensureFacilityAccess($request, $facility);
-
         $bookings = FacilityBooking::query()
-            ->with('user:id,name,email')
             ->where('facility_id', $facility->id)
             ->whereIn('booking_status', ['pending', 'approved'])
             ->orderBy('start_datetime')
             ->get()
             ->map(fn (FacilityBooking $booking) => [
                 'id' => $booking->id,
-                'user_name' => $booking->user?->name,
-                'user_email' => $booking->user?->email,
                 'start_datetime' => $booking->start_datetime?->toISOString(),
                 'end_datetime' => $booking->end_datetime?->toISOString(),
                 'booking_status' => $booking->booking_status,
+            ]);
+
+        $myBookings = FacilityBooking::query()
+            ->where('facility_id', $facility->id)
+            ->where('user_id', $request->user()->id)
+            ->orderByDesc('start_datetime')
+            ->limit(10)
+            ->get()
+            ->map(fn (FacilityBooking $booking) => [
+                'id' => $booking->id,
+                'start_datetime' => $booking->start_datetime?->toDateTimeString(),
+                'end_datetime' => $booking->end_datetime?->toDateTimeString(),
+                'total_price' => (float) $booking->total_price,
+                'booking_status' => $booking->booking_status,
                 'payment_status' => $booking->payment_status,
+                'admin_remarks' => $booking->admin_remarks,
             ]);
 
         return Inertia::render('Facilities/Show', [
             'facility' => [
                 'id' => $facility->id,
                 'organization_id' => $facility->organization_id,
+                'organization_name' => $facility->organization?->name,
                 'name' => $facility->name,
                 'description' => $facility->description,
                 'location' => $facility->location,
@@ -219,13 +259,13 @@ class FacilityBookingController extends Controller
                 'is_active' => $facility->is_active,
             ],
             'bookings' => $bookings,
+            'myBookings' => $myBookings,
         ]);
     }
 
     public function store(Request $request, Facility $facility): RedirectResponse
     {
         abort_unless($request->user()?->hasRole('Member'), 403);
-        $this->ensureFacilityAccess($request, $facility);
 
         if (! $facility->is_active) {
             return back()->withErrors([
@@ -294,11 +334,36 @@ class FacilityBookingController extends Controller
                 'admin_remarks' => $booking->admin_remarks,
             ]);
 
+        $summary = [
+            'pending' => FacilityBooking::query()
+                ->when(
+                    ! $user->hasRole('Superadmin'),
+                    fn ($query) => $query->whereHas('facility', fn ($facilityQuery) => $facilityQuery->where('organization_id', $user->current_organization_id))
+                )
+                ->where('booking_status', 'pending')
+                ->count(),
+            'approved' => FacilityBooking::query()
+                ->when(
+                    ! $user->hasRole('Superadmin'),
+                    fn ($query) => $query->whereHas('facility', fn ($facilityQuery) => $facilityQuery->where('organization_id', $user->current_organization_id))
+                )
+                ->where('booking_status', 'approved')
+                ->count(),
+            'rejected' => FacilityBooking::query()
+                ->when(
+                    ! $user->hasRole('Superadmin'),
+                    fn ($query) => $query->whereHas('facility', fn ($facilityQuery) => $facilityQuery->where('organization_id', $user->current_organization_id))
+                )
+                ->where('booking_status', 'rejected')
+                ->count(),
+        ];
+
         return Inertia::render('Admin/FacilityBookings', [
             'bookings' => $bookings,
             'filters' => [
                 'status' => $status,
             ],
+            'summary' => $summary,
         ]);
     }
 
@@ -369,17 +434,6 @@ class FacilityBookingController extends Controller
         $units = (int) ceil($durationInMinutes / 60);
 
         return round($units * (float) $facility->price_per_unit, 2);
-    }
-
-    private function ensureFacilityAccess(Request $request, Facility $facility): void
-    {
-        $user = $request->user();
-
-        if ($user->hasRole('Superadmin')) {
-            return;
-        }
-
-        abort_if((int) $facility->organization_id !== (int) $user->current_organization_id, 403);
     }
 
     private function resolveOrganizationId($user, ?int $submittedOrganizationId): int

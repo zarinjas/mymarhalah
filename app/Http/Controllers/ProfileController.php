@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -104,6 +105,7 @@ class ProfileController extends Controller
             'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status'          => session('status'),
             'branches'        => $branches,
+            'canEditIcNumber' => $user->hasRole(['Superadmin', 'Admin']),
         ]);
     }
 
@@ -146,8 +148,37 @@ class ProfileController extends Controller
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
         $validated = $request->validated();
+        $canEditIcNumber = $request->user()->hasRole(['Superadmin', 'Admin']);
+        $isSuperadmin = $request->user()->hasRole('Superadmin');
 
-        $validated['is_public_in_directory'] = $request->boolean('is_public_in_directory');
+        if (array_key_exists('ic_number', $validated)) {
+            if ($canEditIcNumber) {
+                $validated['ic_number'] = trim((string) $validated['ic_number']) === ''
+                    ? null
+                    : Str::upper(preg_replace('/\s+/', '', trim((string) $validated['ic_number'])) ?? '');
+            } else {
+                unset($validated['ic_number']);
+            }
+        }
+
+        if ($isSuperadmin) {
+            foreach ([
+                'education_level',
+                'current_profession',
+                'industry',
+                'branch_id',
+                'locality',
+                'expertise',
+                'linkedin_url',
+                'is_public_in_directory',
+            ] as $field) {
+                unset($validated[$field]);
+            }
+        }
+
+        if (! $isSuperadmin) {
+            $validated['is_public_in_directory'] = $request->boolean('is_public_in_directory');
+        }
 
         if ($request->hasFile('profile_photo')) {
             $oldPath = ltrim(str_replace('/storage/', '', parse_url((string) $request->user()->profile_photo_path, PHP_URL_PATH) ?? ''), '/');
@@ -160,7 +191,9 @@ class ProfileController extends Controller
         }
 
         if (
-            ! $request->user()->profile_completed_at
+            ! $isSuperadmin
+            && $request->user()->hasRole('Member')
+            && ! $request->user()->profile_completed_at
             && ! empty($validated['phone'])
             && ! empty($validated['education_level'])
             && ! empty($validated['current_profession'])

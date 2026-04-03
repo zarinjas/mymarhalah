@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\Permission\Models\Role;
@@ -75,7 +76,8 @@ class InformationHubAdminController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%");
+                  ->orWhere('phone', 'like', "%{$search}%")
+                  ->orWhere('ic_number', 'like', "%{$search}%");
             });
         }
 
@@ -90,6 +92,7 @@ class InformationHubAdminController extends Controller
                 'id' => $u->id,
                 'name' => $u->name,
                 'email' => $u->email,
+                'ic_number' => $this->maskIcNumber($u->ic_number),
                 'phone' => $u->phone,
                 'organization_name' => $u->organization?->name ?? 'Tiada Organisasi',
                 'branch_name' => $u->branch?->name ?? 'Tiada Cawangan',
@@ -220,9 +223,15 @@ class InformationHubAdminController extends Controller
     {
         abort_unless($request->user()?->hasRole('Superadmin'), 403);
 
+        $normalizedIcNumber = Str::upper(
+            preg_replace('/\s+/', '', trim((string) $request->input('ic_number'))) ?? ''
+        );
+        $request->merge(['ic_number' => $normalizedIcNumber]);
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'ic_number' => ['required', 'string', 'max:32', 'unique:users,ic_number'],
             'phone' => ['nullable', 'string', 'max:20'],
             'dob' => ['required', 'date'],
             'password' => ['nullable', 'string', 'min:6'],
@@ -235,6 +244,7 @@ class InformationHubAdminController extends Controller
         $user = User::withoutGlobalScopes()->create([
             'name' => $data['name'],
             'email' => $data['email'],
+            'ic_number' => $data['ic_number'],
             'phone' => $data['phone'] ?? null,
             'dob' => $dob,
             'current_organization_id' => $organization?->id,
@@ -334,6 +344,26 @@ class InformationHubAdminController extends Controller
         return back()->with('success', 'Peranan ahli berjaya dikemas kini.');
     }
 
+    public function updateIcNumber(Request $request, User $user): RedirectResponse
+    {
+        abort_unless($request->user()?->hasRole('Superadmin'), 403);
+
+        $normalizedIcNumber = Str::upper(
+            preg_replace('/\s+/', '', trim((string) $request->input('ic_number'))) ?? ''
+        );
+        $request->merge(['ic_number' => $normalizedIcNumber]);
+
+        $data = $request->validate([
+            'ic_number' => ['required', 'string', 'max:32', 'unique:users,ic_number,' . $user->id],
+        ]);
+
+        $user->update([
+            'ic_number' => $data['ic_number'],
+        ]);
+
+        return back()->with('success', 'No IC/Passport berjaya dikemas kini.');
+    }
+
     private function resolveOrganizationId($user, ?int $submittedOrganizationId): int
     {
         if ($user->hasRole('Superadmin')) {
@@ -350,5 +380,23 @@ class InformationHubAdminController extends Controller
         }
 
         abort_if((int) $user->current_organization_id !== (int) $organizationId, 403);
+    }
+
+    private function maskIcNumber(?string $icNumber): string
+    {
+        if (! $icNumber) {
+            return '-';
+        }
+
+        $normalized = preg_replace('/\s+/', '', trim($icNumber)) ?? '';
+
+        if ($normalized === '') {
+            return '-';
+        }
+
+        $visiblePrefix = mb_substr($normalized, 0, 6);
+        $maskedLength = max(0, mb_strlen($normalized) - 6);
+
+        return $visiblePrefix . str_repeat('*', $maskedLength);
     }
 }

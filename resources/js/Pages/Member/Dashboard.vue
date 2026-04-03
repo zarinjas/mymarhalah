@@ -32,6 +32,10 @@ defineProps({
         type: Array,
         default: () => [],
     },
+    latestNews: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const payForm = useForm({});
@@ -225,6 +229,48 @@ function scrollBooks(direction) {
                         </div>
                     </section>
                 </div>
+
+                <section>
+                    <div class="mb-3 flex items-end justify-between md:mb-4">
+                        <div>
+                            <h3 class="text-lg font-black text-gray-900 sm:text-xl md:text-2xl">Info Terkini</h3>
+                            <p class="text-sm text-gray-500">Swipe kad untuk baca makluman terbaru.</p>
+                        </div>
+                        <Link :href="route('news.index')" class="text-xs font-semibold text-emerald-700 hover:text-emerald-800">
+                            Lihat Semua
+                        </Link>
+                    </div>
+
+                    <div class="-mx-4 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
+                        <div class="flex snap-x snap-mandatory gap-3 md:grid md:grid-cols-3 md:gap-4">
+                            <article
+                                v-for="item in latestNews"
+                                :key="item.id"
+                                class="group w-[82%] shrink-0 snap-start overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:w-[60%] md:w-auto"
+                            >
+                                <Link :href="route('news.show', item.id)" class="block">
+                                    <div class="aspect-[16/10] bg-gray-100">
+                                        <img v-if="item.cover_image_path" :src="item.cover_image_path" :alt="item.title" class="h-full w-full object-cover">
+                                        <div v-else class="grid h-full place-items-center text-xs text-gray-400">Tiada gambar</div>
+                                    </div>
+                                    <div class="p-3.5">
+                                        <div class="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+                                            <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-indigo-700">{{ item.category_name }}</span>
+                                            <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">{{ item.organization_name }}</span>
+                                        </div>
+                                        <h4 class="mt-2 line-clamp-2 text-sm font-black text-gray-900">{{ item.title }}</h4>
+                                        <p class="mt-1 line-clamp-2 text-xs text-gray-600">{{ item.excerpt || 'Tekan untuk baca lanjut.' }}</p>
+                                        <p class="mt-2 text-[11px] text-gray-400">{{ item.published_at || '-' }}</p>
+                                    </div>
+                                </Link>
+                            </article>
+                        </div>
+
+                        <div v-if="!latestNews.length" class="rounded-2xl border border-gray-100 bg-white px-4 py-8 text-center text-sm text-gray-500">
+                            Belum ada info terkini untuk dipaparkan.
+                        </div>
+                    </div>
+                </section>
 
                 <section>
                     <div class="mb-3 flex items-end justify-between md:mb-4">

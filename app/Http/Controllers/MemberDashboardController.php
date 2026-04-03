@@ -7,6 +7,7 @@ use App\Models\DashboardBanner;
 use App\Models\EventRsvp;
 use App\Models\Infaq;
 use App\Models\LibraryItem;
+use App\Models\NewsPost;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -99,6 +100,31 @@ class MemberDashboardController extends Controller
                 'organization_id' => $banner->organization_id,
             ]);
 
+        $latestNews = NewsPost::query()
+            ->with(['category:id,name', 'organization:id,name'])
+            ->where('is_published', true)
+            ->where(function ($query) use ($user) {
+                $query->whereNull('organization_id')
+                    ->orWhere('organization_id', $user->current_organization_id);
+            })
+            ->where(function ($query) {
+                $query->whereNull('published_at')
+                    ->orWhere('published_at', '<=', now());
+            })
+            ->latest('published_at')
+            ->latest('id')
+            ->take(8)
+            ->get()
+            ->map(fn (NewsPost $post) => [
+                'id' => $post->id,
+                'title' => $post->title,
+                'excerpt' => $post->excerpt,
+                'cover_image_path' => $post->cover_image_path,
+                'organization_name' => $post->organization?->name ?? 'Semua Organisasi',
+                'category_name' => $post->category?->name ?? 'Umum',
+                'published_at' => $post->published_at?->toDateString(),
+            ]);
+
         // Infaq / donation campaigns (global or org-specific, active, max 6)
         $infaqItems = Infaq::query()
             ->where('is_active', true)
@@ -158,6 +184,7 @@ class MemberDashboardController extends Controller
             'libraryBooks' => $libraryBooks,
             'banners' => $banners,
             'infaqItems' => $infaqItems,
+            'latestNews' => $latestNews,
         ]);
     }
 }

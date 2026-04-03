@@ -23,9 +23,11 @@ class PasswordResetTest extends TestCase
     {
         Notification::fake();
 
-        $user = User::factory()->create();
+        $user = User::factory()->create([
+            'ic_number' => 'A1000001',
+        ]);
 
-        $this->post('/forgot-password', ['email' => $user->email]);
+        $this->post('/forgot-password', ['ic_number' => $user->ic_number]);
 
         Notification::assertSentTo($user, ResetPassword::class);
     }
@@ -34,9 +36,11 @@ class PasswordResetTest extends TestCase
     {
         Notification::fake();
 
-        $user = User::factory()->create();
+        $user = User::factory()->create([
+            'ic_number' => 'A1000002',
+        ]);
 
-        $this->post('/forgot-password', ['email' => $user->email]);
+        $this->post('/forgot-password', ['ic_number' => $user->ic_number]);
 
         Notification::assertSentTo($user, ResetPassword::class, function ($notification) {
             $response = $this->get('/reset-password/'.$notification->token);
@@ -51,9 +55,11 @@ class PasswordResetTest extends TestCase
     {
         Notification::fake();
 
-        $user = User::factory()->create();
+        $user = User::factory()->create([
+            'ic_number' => 'A1000003',
+        ]);
 
-        $this->post('/forgot-password', ['email' => $user->email]);
+        $this->post('/forgot-password', ['ic_number' => $user->ic_number]);
 
         Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
             $response = $this->post('/reset-password', [

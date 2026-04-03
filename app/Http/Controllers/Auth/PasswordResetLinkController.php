@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -30,22 +32,39 @@ class PasswordResetLinkController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'email' => 'required|email',
+            'ic_number' => ['required', 'string', 'max:32'],
         ]);
 
-        // We will send the password reset link to this user. Once we have attempted
-        // to send the link, we will examine the response then see the message we
-        // need to show to the user. Finally, we'll send out a proper response.
+        $normalizedIcNumber = Str::upper(
+            preg_replace('/\s+/', '', trim((string) $request->input('ic_number'))) ?? ''
+        );
+
+        $user = User::withoutGlobalScopes()
+            ->where('ic_number', $normalizedIcNumber)
+            ->first();
+
+        if (! $user) {
+            throw ValidationException::withMessages([
+                'ic_number' => ['No IC/Passport tidak ditemui dalam sistem.'],
+            ]);
+        }
+
+        if (! $user->email) {
+            throw ValidationException::withMessages([
+                'ic_number' => ['Akaun ini tiada emel berdaftar. Sila hubungi admin.'],
+            ]);
+        }
+
         $status = Password::sendResetLink(
-            $request->only('email')
+            ['email' => $user->email]
         );
 
         if ($status == Password::RESET_LINK_SENT) {
-            return back()->with('status', __($status));
+            return back()->with('status', 'Pautan reset kata laluan telah dihantar ke emel berdaftar anda.');
         }
 
         throw ValidationException::withMessages([
-            'email' => [trans($status)],
+            'ic_number' => [trans($status)],
         ]);
     }
 }
