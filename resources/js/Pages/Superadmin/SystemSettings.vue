@@ -1,6 +1,7 @@
 <script setup>
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { Head, useForm } from '@inertiajs/vue3';
+import { onBeforeUnmount, ref } from 'vue';
 
 const props = defineProps({
     systemLogoPath: {
@@ -11,11 +12,40 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    splashImagePath: {
+        type: String,
+        default: null,
+    },
+    splashBackgroundColor: {
+        type: String,
+        default: '#0f172a',
+    },
+    splashTitle: {
+        type: String,
+        default: 'myWAP',
+    },
+    splashDurationMs: {
+        type: Number,
+        default: 1800,
+    },
+    splashEnabled: {
+        type: Boolean,
+        default: true,
+    },
 });
 
 const form = useForm({
     system_logo: null,
 });
+
+const splashForm = useForm({
+    splash_image: null,
+    splash_background_color: props.splashBackgroundColor || '#0f172a',
+    splash_title: props.splashTitle || 'myWAP',
+    splash_duration_ms: props.splashDurationMs || 1800,
+    splash_enabled: props.splashEnabled,
+});
+const splashPreviewUrl = ref(null);
 
 function uploadSystemLogo() {
     form.post(route('superadmin.settings.system-logo.update'), {
@@ -24,6 +54,34 @@ function uploadSystemLogo() {
         onSuccess: () => form.reset('system_logo'),
     });
 }
+
+function saveSplashSettings() {
+    splashForm.post(route('superadmin.settings.splash.update'), {
+        preserveScroll: true,
+        forceFormData: true,
+        onSuccess: () => splashForm.reset('splash_image'),
+    });
+}
+
+function onSplashImageSelected(event) {
+    const file = event.target.files?.[0] ?? null;
+    splashForm.splash_image = file;
+
+    if (splashPreviewUrl.value) {
+        URL.revokeObjectURL(splashPreviewUrl.value);
+        splashPreviewUrl.value = null;
+    }
+
+    if (file) {
+        splashPreviewUrl.value = URL.createObjectURL(file);
+    }
+}
+
+onBeforeUnmount(() => {
+    if (splashPreviewUrl.value) {
+        URL.revokeObjectURL(splashPreviewUrl.value);
+    }
+});
 </script>
 
 <template>
@@ -73,6 +131,76 @@ function uploadSystemLogo() {
                             class="rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60"
                         >
                             {{ form.processing ? 'Memuat naik...' : 'Simpan Logo myWAP' }}
+                        </button>
+                    </form>
+                </div>
+            </section>
+
+            <section class="rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+                <h2 class="text-lg font-black text-gray-800">Splash Screen Web</h2>
+                <p class="mt-1 text-xs text-gray-500">Dipaparkan sekali setiap sesi browser semasa aplikasi mula dibuka. Format imej: JPG, PNG, WEBP, SVG, GIF.</p>
+
+                <div class="mt-4 grid gap-4 md:grid-cols-2">
+                    <div class="rounded-2xl border border-gray-200 p-4">
+                        <p class="text-xs font-bold uppercase tracking-wide text-gray-500">Preview</p>
+                        <div
+                            class="mt-3 flex h-48 items-center justify-center rounded-2xl"
+                            :style="{ backgroundColor: splashForm.splash_background_color || '#0f172a' }"
+                        >
+                            <div class="text-center">
+                                <img
+                                    v-if="splashForm.splash_image || splashImagePath || systemLogoPath"
+                                    :src="splashPreviewUrl || splashImagePath || systemLogoPath"
+                                    class="mx-auto h-16 w-16 object-contain"
+                                    alt="Splash preview"
+                                >
+                                <p class="mt-3 text-sm font-bold text-white">{{ splashForm.splash_title || 'myWAP' }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form class="space-y-3" @submit.prevent="saveSplashSettings">
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-semibold text-gray-500">Imej Splash (optional)</span>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                :disabled="!canManageSystemLogo"
+                                @change="onSplashImageSelected"
+                                class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-gray-700"
+                            >
+                            <p v-if="splashForm.errors.splash_image" class="mt-1 text-xs text-red-500">{{ splashForm.errors.splash_image }}</p>
+                        </label>
+
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-semibold text-gray-500">Warna Latar</span>
+                            <input v-model="splashForm.splash_background_color" type="color" class="h-10 w-full rounded-xl border border-gray-200 p-1">
+                            <p v-if="splashForm.errors.splash_background_color" class="mt-1 text-xs text-red-500">{{ splashForm.errors.splash_background_color }}</p>
+                        </label>
+
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-semibold text-gray-500">Tajuk</span>
+                            <input v-model="splashForm.splash_title" type="text" maxlength="120" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm">
+                            <p v-if="splashForm.errors.splash_title" class="mt-1 text-xs text-red-500">{{ splashForm.errors.splash_title }}</p>
+                        </label>
+
+                        <label class="block">
+                            <span class="mb-1 block text-xs font-semibold text-gray-500">Tempoh (ms)</span>
+                            <input v-model.number="splashForm.splash_duration_ms" type="number" min="300" max="6000" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm">
+                            <p v-if="splashForm.errors.splash_duration_ms" class="mt-1 text-xs text-red-500">{{ splashForm.errors.splash_duration_ms }}</p>
+                        </label>
+
+                        <label class="flex items-center gap-2 text-sm text-gray-700">
+                            <input v-model="splashForm.splash_enabled" type="checkbox" class="rounded border-gray-300">
+                            Aktifkan splash screen
+                        </label>
+
+                        <button
+                            type="submit"
+                            :disabled="splashForm.processing || !canManageSystemLogo"
+                            class="rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60"
+                        >
+                            {{ splashForm.processing ? 'Menyimpan...' : 'Simpan Tetapan Splash' }}
                         </button>
                     </form>
                 </div>

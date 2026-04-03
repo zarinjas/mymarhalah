@@ -2,6 +2,7 @@
 import { ref, computed, reactive } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
+import AppSplashScreen from '@/Components/AppSplashScreen.vue';
 import PwaInstallPrompt from '@/Components/PwaInstallPrompt.vue';
 
 // ─── Auth & Theme ────────────────────────────────────────────────────────────
@@ -825,6 +826,7 @@ const bottomNavItems = computed(() => [
 
         <!-- PWA Install Prompt -->
         <PwaInstallPrompt />
+        <AppSplashScreen />
     </div>
 </template>
 

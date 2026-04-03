@@ -88,6 +88,7 @@ Route::middleware(['auth', 'verified', 'profile_complete'])->group(function () {
 
         Route::get('/superadmin/settings', [SuperadminSystemSettingController::class, 'index'])->name('superadmin.settings.index');
         Route::post('/superadmin/settings/system-logo', [SuperadminSystemSettingController::class, 'updateSystemLogo'])->name('superadmin.settings.system-logo.update');
+        Route::post('/superadmin/settings/splash', [SuperadminSystemSettingController::class, 'updateSplashSetting'])->name('superadmin.settings.splash.update');
         Route::post('/superadmin/members', [InformationHubAdminController::class, 'storeMember'])->name('superadmin.members.store');
 
         Route::redirect('/superadmin/logo-settings', '/superadmin/organizations');

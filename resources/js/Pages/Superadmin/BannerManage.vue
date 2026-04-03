@@ -56,11 +56,16 @@ function cancelEdit() {
 }
 
 function saveEdit(item) {
-    editForm.put(route('superadmin.banners.update', item.id), {
-        preserveScroll: true,
-        forceFormData: true,
-        onSuccess: () => cancelEdit(),
-    });
+    editForm
+        .transform((data) => ({
+            ...data,
+            _method: 'put',
+        }))
+        .post(route('superadmin.banners.update', item.id), {
+            preserveScroll: true,
+            forceFormData: true,
+            onSuccess: () => cancelEdit(),
+        });
 }
 
 function remove(item) {
@@ -120,6 +125,7 @@ function seedDemoBanners() {
                     <div class="md:col-span-2">
                         <label class="mb-1 block text-xs font-semibold text-gray-500">Imej Banner</label>
                         <input type="file" accept="image/*" @change="form.banner_image = $event.target.files[0]" class="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-gray-700">
+                        <p v-if="form.errors.banner_image" class="mt-2 text-xs font-semibold text-red-600">{{ form.errors.banner_image }}</p>
                     </div>
                     <div class="md:col-span-2">
                         <button type="submit" :disabled="form.processing" class="rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60">
@@ -145,6 +151,7 @@ function seedDemoBanners() {
                                 <input v-model.number="editForm.display_order" type="number" min="1" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-xs">
                                 <label class="flex items-center gap-2 text-xs text-gray-600"><input v-model="editForm.is_active" type="checkbox" class="rounded border-gray-300"> Aktif</label>
                                 <input type="file" accept="image/*" @change="editForm.banner_image = $event.target.files[0]" class="w-full rounded-lg border border-gray-200 px-3 py-2 text-xs">
+                                <p v-if="editForm.errors.banner_image" class="text-[11px] font-semibold text-red-600">{{ editForm.errors.banner_image }}</p>
                                 <div class="flex gap-2">
                                     <button type="submit" class="rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Update</button>
                                     <button type="button" @click="cancelEdit" class="rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-semibold text-gray-700">Cancel</button>

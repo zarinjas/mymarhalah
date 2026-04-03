@@ -84,6 +84,11 @@ class HandleInertiaRequests extends Middleware
             ],
             'brand' => [
                 'system_logo_path' => $this->normalizeStorageUrl($appSetting?->system_logo_path),
+                'splash_image_path' => $this->normalizeStorageUrl($appSetting?->splash_image_path),
+                'splash_background_color' => $appSetting?->splash_background_color ?? '#0f172a',
+                'splash_title' => $appSetting?->splash_title ?? 'myWAP',
+                'splash_duration_ms' => (int) ($appSetting?->splash_duration_ms ?? 1800),
+                'splash_enabled' => (bool) ($appSetting?->splash_enabled ?? true),
             ],
             'notifications' => $user ? [
                 'unread_count' => $user->unreadNotifications()->count(),

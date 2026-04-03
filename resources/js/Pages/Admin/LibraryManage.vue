@@ -73,11 +73,16 @@ function onEditCoverSelected(event) {
 }
 
 function submitEditLibrary(item) {
-    libraryEditForm.put(route('admin.hub.library.update', item.id), {
-        preserveScroll: true,
-        forceFormData: true,
-        onSuccess: () => cancelEditLibrary(),
-    });
+    libraryEditForm
+        .transform((data) => ({
+            ...data,
+            _method: 'put',
+        }))
+        .post(route('admin.hub.library.update', item.id), {
+            preserveScroll: true,
+            forceFormData: true,
+            onSuccess: () => cancelEditLibrary(),
+        });
 }
 
 function removeLibraryItem(id) {
@@ -201,10 +206,12 @@ const showUploadForm = ref(false);
                                 <div>
                                     <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-gray-500">Kemaskini Fail PDF (Opsional)</label>
                                     <input type="file" accept="application/pdf" @change="onEditPdfSelected" class="w-full rounded-xl border border-gray-200 px-3 py-1.5 text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-2 file:py-1 file:text-xs file:font-semibold">
+                                    <p v-if="libraryEditForm.errors.pdf_file" class="mt-2 text-[11px] font-semibold text-red-500">{{ libraryEditForm.errors.pdf_file }}</p>
                                 </div>
                                 <div>
                                     <label class="mb-1 block text-[10px] font-bold uppercase tracking-wider text-gray-500">Kemaskini Cover (Opsional)</label>
                                     <input type="file" accept="image/*" @change="onEditCoverSelected" class="w-full rounded-xl border border-gray-200 px-3 py-1.5 text-xs file:mr-3 file:rounded-lg file:border-0 file:bg-gray-100 file:px-2 file:py-1 file:text-xs file:font-semibold">
+                                    <p v-if="libraryEditForm.errors.cover_image" class="mt-2 text-[11px] font-semibold text-red-500">{{ libraryEditForm.errors.cover_image }}</p>
                                 </div>
                                 <div class="flex items-center gap-2 pt-2 mt-auto">
                                     <button type="submit" :disabled="libraryEditForm.processing" class="flex-1 rounded-xl bg-gray-900 px-3 py-2.5 text-xs font-bold text-white hover:bg-gray-800 transition-colors disabled:opacity-60 text-center">

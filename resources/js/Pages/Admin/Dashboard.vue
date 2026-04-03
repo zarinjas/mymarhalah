@@ -24,6 +24,10 @@ const chartMax = computed(() => {
     const values = (props.overview?.program_chart ?? []).map((item) => Number(item.value ?? 0));
     return Math.max(1, ...values);
 });
+const branchMax = computed(() => {
+    const values = (props.overview?.top_branches ?? []).map((item) => Number(item.members_count ?? 0));
+    return Math.max(1, ...values);
+});
 
 const createCampaignForm = useForm({
     title: '',
@@ -38,6 +42,71 @@ function formatCurrency(value) {
         currency: 'MYR',
         maximumFractionDigits: 0,
     }).format(value ?? 0);
+}
+
+function formatTrend(value) {
+    const number = Number(value ?? 0);
+    const sign = number > 0 ? '+' : '';
+    return `${sign}${number}%`;
+}
+
+function formatRelativeTime(value) {
+    if (!value) return '-';
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+
+    const diffInMs = Date.now() - date.getTime();
+    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
+
+    if (diffInMinutes < 1) return 'baru sahaja';
+    if (diffInMinutes < 60) return `${diffInMinutes} min lalu`;
+
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours} jam lalu`;
+
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays} hari lalu`;
+}
+
+function branchTone(organizationName = '', index = 0) {
+    const label = String(organizationName).toLowerCase();
+
+    if (label.includes('pkpim')) {
+        return index === 0
+            ? 'border-indigo-200 bg-gradient-to-r from-indigo-50 to-white'
+            : 'border-indigo-100 bg-indigo-50/60';
+    }
+
+    if (label.includes('wadah')) {
+        return index === 0
+            ? 'border-amber-200 bg-gradient-to-r from-amber-50 to-white'
+            : 'border-amber-100 bg-amber-50/60';
+    }
+
+    return index === 0
+        ? 'border-emerald-200 bg-gradient-to-r from-emerald-50 to-white'
+        : 'border-emerald-100 bg-emerald-50/60';
+}
+
+function branchBadgeTone(organizationName = '') {
+    const label = String(organizationName).toLowerCase();
+
+    if (label.includes('pkpim')) {
+        return 'bg-indigo-100 text-indigo-700';
+    }
+
+    if (label.includes('wadah')) {
+        return 'bg-amber-100 text-amber-700';
+    }
+
+    return 'bg-emerald-100 text-emerald-700';
+}
+
+function activityTone(type = '') {
+    if (type === 'payment') return 'border-emerald-100 bg-emerald-50/70';
+    if (type === 'booking') return 'border-amber-100 bg-amber-50/70';
+    return 'border-indigo-100 bg-indigo-50/70';
 }
 
 function submitCampaign() {
@@ -134,6 +203,122 @@ function submitCampaign() {
                                 ></div>
                             </div>
                         </div>
+                    </div>
+                </section>
+
+                <section class="rounded-3xl border border-gray-100 bg-white/90 p-4 shadow-sm backdrop-blur-sm sm:p-5 md:col-span-3 lg:col-span-2">
+                    <div class="flex items-center justify-between">
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-gray-400">Pulse Monitor</p>
+                        <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">LIVE</span>
+                    </div>
+                    <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        <div class="rounded-2xl border border-gray-100 bg-gradient-to-br from-emerald-50 to-white p-3">
+                            <p class="text-[11px] font-semibold text-gray-500">Ahli Baharu (30h)</p>
+                            <p class="mt-1 text-xl font-black text-gray-900">{{ overview.new_members_30d ?? 0 }}</p>
+                            <p class="mt-1 text-[11px] font-semibold" :class="Number(overview.new_members_trend_percent) >= 0 ? 'text-emerald-700' : 'text-red-600'">
+                                {{ formatTrend(overview.new_members_trend_percent) }}
+                            </p>
+                        </div>
+                        <div class="rounded-2xl border border-gray-100 bg-gradient-to-br from-indigo-50 to-white p-3">
+                            <p class="text-[11px] font-semibold text-gray-500">Program Bulan Ini</p>
+                            <p class="mt-1 text-xl font-black text-gray-900">{{ overview.events_this_month ?? 0 }}</p>
+                            <p class="mt-1 text-[11px] text-gray-500">Kalender semasa</p>
+                        </div>
+                        <div class="rounded-2xl border border-gray-100 bg-gradient-to-br from-amber-50 to-white p-3">
+                            <p class="text-[11px] font-semibold text-gray-500">Tempahan Pending</p>
+                            <p class="mt-1 text-xl font-black text-gray-900">{{ overview.pending_facility_bookings ?? 0 }}</p>
+                            <p class="mt-1 text-[11px] text-gray-500">Perlu tindakan admin</p>
+                        </div>
+                        <div class="rounded-2xl border border-gray-100 bg-gradient-to-br from-rose-50 to-white p-3">
+                            <p class="text-[11px] font-semibold text-gray-500">Yuran Tertunggak</p>
+                            <p class="mt-1 text-xl font-black text-gray-900">{{ overview.fees_due_count ?? 0 }}</p>
+                            <p class="mt-1 text-[11px] text-gray-500">Tahun semasa</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="rounded-3xl border border-gray-100 bg-white/90 p-4 shadow-sm backdrop-blur-sm sm:p-5 md:col-span-3 lg:col-span-2">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-gray-400">Amaran Tindakan</p>
+                    <div class="mt-3 space-y-2.5">
+                        <div
+                            v-for="(alert, index) in overview.alerts"
+                            :key="index"
+                            class="rounded-2xl border p-3"
+                            :class="alert.type === 'high' ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'"
+                        >
+                            <p class="text-sm font-bold" :class="alert.type === 'high' ? 'text-red-700' : 'text-amber-700'">{{ alert.title }}</p>
+                            <p class="mt-1 text-xs" :class="alert.type === 'high' ? 'text-red-600' : 'text-amber-700'">{{ alert.description }}</p>
+                        </div>
+                        <div v-if="!(overview.alerts?.length)" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-3">
+                            <p class="text-sm font-bold text-emerald-700">Semua Stabil</p>
+                            <p class="mt-1 text-xs text-emerald-700">Tiada isu kritikal dikesan buat masa ini.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="rounded-3xl border border-gray-100 bg-white/90 p-4 shadow-sm backdrop-blur-sm sm:p-5 md:col-span-3 lg:col-span-2">
+                    <div class="flex items-center justify-between">
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-gray-400">Cawangan Aktif</p>
+                        <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-bold text-indigo-700">{{ overview.active_branches ?? 0 }} cawangan</span>
+                    </div>
+                    <div class="mt-3 space-y-2.5">
+                        <div
+                            v-for="(branch, index) in overview.top_branches"
+                            :key="branch.id"
+                            class="rounded-2xl border p-3"
+                            :class="branchTone(branch.organization_name, index)"
+                        >
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <p class="text-sm font-bold text-gray-900">{{ branch.name }}</p>
+                                    <div class="mt-1 flex items-center gap-1.5">
+                                        <span
+                                            class="rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-wide"
+                                            :class="branchBadgeTone(branch.organization_name)"
+                                        >
+                                            {{ branch.organization_name }}
+                                        </span>
+                                        <span v-if="branch.state" class="text-[11px] text-gray-500">{{ branch.state }}</span>
+                                    </div>
+                                </div>
+                                <p class="text-sm font-black text-indigo-700">{{ branch.members_count }} ahli</p>
+                            </div>
+                            <div class="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200">
+                                <div
+                                    class="h-full rounded-full"
+                                    :class="branch.organization_name?.toLowerCase().includes('pkpim') ? 'bg-indigo-500' : (branch.organization_name?.toLowerCase().includes('wadah') ? 'bg-amber-500' : 'bg-emerald-500')"
+                                    :style="{ width: ((Number(branch.members_count || 0) / branchMax) * 100) + '%' }"
+                                ></div>
+                            </div>
+                        </div>
+                        <p v-if="!(overview.top_branches?.length)" class="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-3 text-xs text-gray-500">
+                            Belum ada data cawangan untuk dipaparkan.
+                        </p>
+                    </div>
+                </section>
+
+                <section class="rounded-3xl border border-gray-100 bg-white/90 p-4 shadow-sm backdrop-blur-sm sm:p-5 md:col-span-3 lg:col-span-2">
+                    <p class="text-[11px] font-semibold uppercase tracking-[0.15em] text-gray-400">Aktiviti Terkini</p>
+                    <div class="mt-3 space-y-2.5">
+                        <div
+                            v-for="activity in overview.recent_activities"
+                            :key="activity.id"
+                            class="rounded-2xl border p-3"
+                            :class="activityTone(activity.type)"
+                        >
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <p class="text-sm font-bold text-gray-900">{{ activity.title }}</p>
+                                    <p class="text-xs text-gray-600">{{ activity.description }}</p>
+                                </div>
+                                <span class="shrink-0 rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-gray-500">
+                                    {{ formatRelativeTime(activity.created_at) }}
+                                </span>
+                            </div>
+                        </div>
+                        <p v-if="!(overview.recent_activities?.length)" class="rounded-2xl border border-dashed border-gray-200 bg-gray-50 p-3 text-xs text-gray-500">
+                            Belum ada aktiviti direkodkan.
+                        </p>
                     </div>
                 </section>
 

@@ -1,9 +1,9 @@
 <script setup>
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
-defineProps({
+const props = defineProps({
     member: {
         type: Object,
         required: true,
@@ -48,6 +48,13 @@ const coverStyles = [
     'from-amber-100 to-amber-300 text-amber-900',
     'from-violet-100 to-violet-300 text-violet-900',
 ];
+const featuredInfaq = computed(() =>
+    [...(props.infaqItems ?? [])]
+        .sort((a, b) => Number(b.progress_percent ?? 0) - Number(a.progress_percent ?? 0))
+        .slice(0, 4)
+);
+const featuredNews = computed(() => (props.latestNews ?? []).slice(0, 5));
+const firstInfaqId = computed(() => featuredInfaq.value[0]?.id ?? null);
 
 function payFee() {
     payForm.post(route('member.pay.fee'), { preserveScroll: true });
@@ -74,6 +81,12 @@ function donateInfaq(infaqId) {
     form.post(route('member.infaq.donate', infaqId), {
         preserveScroll: true,
     });
+}
+
+function quickDonate(infaqId, amount) {
+    const form = getInfaqForm(infaqId);
+    form.amount = amount;
+    donateInfaq(infaqId);
 }
 
 function scrollBooks(direction) {
@@ -109,6 +122,45 @@ function scrollBooks(direction) {
             </div>
 
             <div class="space-y-4 md:space-y-7">
+                <section class="md:hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-indigo-50 p-4 shadow-sm">
+                    <div class="flex items-center justify-between">
+                        <p class="text-xs font-black uppercase tracking-[0.16em] text-emerald-700">Quick Action</p>
+                        <span class="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-gray-500 ring-1 ring-gray-200">Mobile View</span>
+                    </div>
+                    <div class="mt-3 grid grid-cols-2 gap-2.5">
+                        <Link :href="route('member.financial.overview')" class="mobile-action-card">
+                            <span class="mobile-action-icon bg-emerald-100 text-emerald-700">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                            </span>
+                            <span>Yuran Saya</span>
+                        </Link>
+                        <Link :href="route('member.facilities.index')" class="mobile-action-card">
+                            <span class="mobile-action-icon bg-amber-100 text-amber-700">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M5 7v13h14V7M9 7V4h6v3M9 13h6"/></svg>
+                            </span>
+                            <span>Tempah Ruang</span>
+                        </Link>
+                        <Link :href="route('news.index')" class="mobile-action-card">
+                            <span class="mobile-action-icon bg-indigo-100 text-indigo-700">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M19 21H9a2 2 0 01-2-2V5a2 2 0 012-2h10a2 2 0 012 2v14a2 2 0 01-2 2zM7 7H5a2 2 0 00-2 2v10a2 2 0 002 2h2M12 7h5M12 11h5M12 15h5"/></svg>
+                            </span>
+                            <span>Info Terkini</span>
+                        </Link>
+                        <Link v-if="firstInfaqId" :href="route('member.infaq.show', firstInfaqId)" class="mobile-action-card">
+                            <span class="mobile-action-icon bg-rose-100 text-rose-700">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0v4M5 11h14l-1 9H6l-1-9z"/></svg>
+                            </span>
+                            <span>Sumbang Infaq</span>
+                        </Link>
+                        <button v-else type="button" class="mobile-action-card opacity-60">
+                            <span class="mobile-action-icon bg-rose-100 text-rose-700">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0v4M5 11h14l-1 9H6l-1-9z"/></svg>
+                            </span>
+                            <span>Tiada Infaq</span>
+                        </button>
+                    </div>
+                </section>
+
                 <section class="relative overflow-hidden rounded-3xl border border-white/30 bg-gradient-to-br from-slate-900 via-emerald-900 to-emerald-700 p-4 text-white shadow-xl sm:p-5 md:p-8">
                     <div class="absolute -right-16 -top-16 h-60 w-60 rounded-full bg-white/10 blur-2xl"></div>
                     <div class="absolute -bottom-20 left-1/3 h-56 w-56 rounded-full bg-emerald-300/25 blur-2xl"></div>
@@ -140,6 +192,84 @@ function scrollBooks(direction) {
                                 <p class="text-[11px] text-emerald-100/80">Program Seterusnya</p>
                                 <p class="mt-1 text-sm font-bold text-white line-clamp-1">{{ nextEvent?.title || 'Tiada program akan datang' }}</p>
                             </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="md:hidden">
+                    <div class="mb-2 flex items-end justify-between">
+                        <div>
+                            <h3 class="text-lg font-black text-gray-900">Kempen Infaq Pilihan</h3>
+                            <p class="text-xs text-gray-500">Swipe dan sumbang terus dari dashboard.</p>
+                        </div>
+                        <Link :href="route('member.financial.overview')" class="text-[11px] font-bold text-emerald-700">Lihat Semua</Link>
+                    </div>
+                    <div class="-mx-4 overflow-x-auto px-4 pb-2">
+                        <div class="flex snap-x snap-mandatory gap-3">
+                            <article
+                                v-for="item in featuredInfaq"
+                                :key="`mobile-infaq-${item.id}`"
+                                class="card-float w-[85%] shrink-0 snap-start overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-md"
+                            >
+                                <div class="relative aspect-[4/5] overflow-hidden bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-500 p-3 text-white">
+                                    <img v-if="item.image_path" :src="item.image_path" :alt="item.title" class="absolute inset-0 h-full w-full object-cover opacity-35">
+                                    <div class="relative z-10">
+                                        <span class="inline-flex rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
+                                            {{ item.type === 'progress' ? 'Progress' : 'One-Off' }}
+                                        </span>
+                                        <h4 class="mt-2 line-clamp-2 text-base font-black">{{ item.title }}</h4>
+                                        <p class="mt-1 text-xs text-emerald-50">{{ formatCurrency(item.collected_amount) }} terkumpul</p>
+                                    </div>
+                                </div>
+                                <div class="p-3.5">
+                                    <div class="h-2 w-full overflow-hidden rounded-full bg-emerald-100">
+                                        <div class="h-2 rounded-full bg-emerald-500 transition-all duration-700" :style="{ width: (item.progress_percent || 0) + '%' }"></div>
+                                    </div>
+                                    <div class="mt-2 flex items-center justify-between text-[11px] text-gray-500">
+                                        <span>{{ item.progress_percent || 0 }}% capai</span>
+                                        <span>{{ formatCurrency(item.target_amount || 0) }}</span>
+                                    </div>
+                                    <div class="mt-3 grid grid-cols-3 gap-2">
+                                        <button type="button" @click="quickDonate(item.id, 10)" :disabled="getInfaqForm(item.id).processing" class="rounded-xl bg-emerald-50 px-2 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">RM10</button>
+                                        <button type="button" @click="quickDonate(item.id, 30)" :disabled="getInfaqForm(item.id).processing" class="rounded-xl bg-emerald-50 px-2 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">RM30</button>
+                                        <button type="button" @click="quickDonate(item.id, 50)" :disabled="getInfaqForm(item.id).processing" class="rounded-xl bg-emerald-50 px-2 py-1.5 text-xs font-bold text-emerald-700 ring-1 ring-emerald-200">RM50</button>
+                                    </div>
+                                </div>
+                            </article>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="md:hidden">
+                    <div class="mb-2 flex items-end justify-between">
+                        <div>
+                            <h3 class="text-lg font-black text-gray-900">Berita Untuk Anda</h3>
+                            <p class="text-xs text-gray-500">Story cards yang cepat dibaca.</p>
+                        </div>
+                        <Link :href="route('news.index')" class="text-[11px] font-bold text-indigo-700">Buka Feed</Link>
+                    </div>
+                    <div class="-mx-4 overflow-x-auto px-4 pb-2">
+                        <div class="flex snap-x snap-mandatory gap-3">
+                            <article
+                                v-for="item in featuredNews"
+                                :key="`mobile-news-${item.id}`"
+                                class="card-float w-[82%] shrink-0 snap-start overflow-hidden rounded-3xl border border-indigo-100 bg-white shadow-sm"
+                            >
+                                <Link :href="route('news.show', item.id)" class="block">
+                                    <div class="relative aspect-[4/5] overflow-hidden bg-gray-100">
+                                        <img v-if="item.cover_image_path" :src="item.cover_image_path" :alt="item.title" class="h-full w-full object-cover">
+                                        <div class="absolute inset-0 bg-gradient-to-t from-slate-900/55 to-transparent"></div>
+                                        <p class="absolute bottom-3 left-3 right-3 line-clamp-2 text-sm font-black text-white">{{ item.title }}</p>
+                                    </div>
+                                    <div class="p-3">
+                                        <div class="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-gray-500">
+                                            <span class="rounded-full bg-indigo-50 px-2 py-0.5 text-indigo-700">{{ item.category_name }}</span>
+                                            <span class="rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-700">{{ item.organization_name }}</span>
+                                        </div>
+                                        <p class="mt-2 line-clamp-2 text-xs text-gray-600">{{ item.excerpt || 'Tap untuk baca lanjut.' }}</p>
+                                    </div>
+                                </Link>
+                            </article>
                         </div>
                     </div>
                 </section>
@@ -230,7 +360,7 @@ function scrollBooks(direction) {
                     </section>
                 </div>
 
-                <section>
+                <section class="hidden md:block">
                     <div class="mb-3 flex items-end justify-between md:mb-4">
                         <div>
                             <h3 class="text-lg font-black text-gray-900 sm:text-xl md:text-2xl">Info Terkini</h3>
@@ -272,7 +402,7 @@ function scrollBooks(direction) {
                     </div>
                 </section>
 
-                <section>
+                <section class="hidden md:block">
                     <div class="mb-3 flex items-end justify-between md:mb-4">
                         <div>
                             <h3 class="text-lg font-black text-gray-900 sm:text-xl md:text-2xl">Berita Bergambar</h3>
@@ -300,7 +430,7 @@ function scrollBooks(direction) {
                     </div>
                 </section>
 
-                <section>
+                <section class="hidden md:block">
                     <div class="mb-3 flex items-end justify-between md:mb-4">
                         <div>
                             <h3 class="text-lg font-black text-gray-900 sm:text-xl md:text-2xl">Infaq &amp; Sumbangan</h3>
@@ -421,3 +551,32 @@ function scrollBooks(direction) {
         </div>
     </AppLayout>
 </template>
+
+<style scoped>
+.mobile-action-card {
+    @apply flex items-center justify-center gap-2 rounded-2xl bg-white px-3 py-3 text-xs font-bold text-gray-700 ring-1 ring-gray-200 transition;
+}
+
+.mobile-action-card:hover {
+    @apply -translate-y-0.5 bg-gray-50;
+}
+
+.mobile-action-icon {
+    @apply inline-flex h-7 w-7 items-center justify-center rounded-lg ring-1 ring-black/5;
+}
+
+.card-float {
+    animation: card-float-in 480ms ease-out both;
+}
+
+@keyframes card-float-in {
+    0% {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+</style>
